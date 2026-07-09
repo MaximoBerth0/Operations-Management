@@ -1,4 +1,4 @@
-# Management API
+# Operations Management API
 
 Inventory management system for orders, reservations, authentication, and role-permission for administrators, employees, and customers. Focused on back-office systems for businesses and companies.
 
@@ -11,6 +11,7 @@ Inventory management system for orders, reservations, authentication, and role-p
   - [Deployment on Amazon Web Services](#deployment-on-amazon-web-services)
 - [Tech stack](#tech-stack)
 - [Architecture](#architecture)
+- [Documentation](#documentation)
 - [Installation & setup (recommended: Docker)](#installation--setup-recommended-docker)
   - [Prerequisites](#prerequisites)
   - [Clone the repository](#clone-the-repository)
@@ -53,11 +54,7 @@ It also keeps users informed through **email notifications**, including low-stoc
 
 ### Deployment on Amazon Web Services
 
-The API runs as a container on **Amazon ECS** (Fargate), behind an Application Load Balancer. A few additional AWS services support it:
-
-- **AWS Secrets Manager** — stores the application's configuration (database URL, secret key, mail/CORS settings) as a single JSON secret. The app loads this bundle at startup via the task's IAM role, so no `.env` and no secrets live in the image or repository.
-- **ECS Service Auto Scaling** — scales the number of running tasks up or down based on CPU/memory usage to handle changing load.
-- **Amazon SES** — sends transactional email (low-stock alerts and password reset links).
+The API runs as a container on **Amazon ECS** (Fargate) behind an Application Load Balancer, backed by **RDS** (PostgreSQL), with **Secrets Manager** (configuration), **SES** (transactional email), and ECS auto scaling. See the [deployment guide](docs/deployment.md) for the full stack.
 
 ---
 
@@ -78,48 +75,21 @@ The API runs as a container on **Amazon ECS** (Fargate), behind an Application L
 ## Architecture
 
 The codebase is organized into self-contained feature modules under `app/`, each
-following the same layered layout (router → service → repository → model). Shared
-concerns (config, security, constants) live in `core/`, and the SQLAlchemy `Base`
-plus session wiring live in `database/`.
+following the same layered layout (**router → service → repository → model**).
+Shared concerns (config, security, constants) live in `core/`, and the SQLAlchemy
+engine and session wiring live in `database/`.
 
-```text
-app/
-├── main.py             # FastAPI application entry point
-├── core/               # Shared application components
-│   ├── config.py       # Application settings (Pydantic Settings)
-│   ├── constants/      # Roles, permissions, and shared constants
-│   └── security/       # Password hashing, JWT handling, security utilities
-├── database/           # Database engine, session, Base, and ORM configuration
-├── auth/               # Authentication and account security
-│   └── repositories/
-├── users/              # User management
-├── rbac/               # Role-Based Access Control (roles and permissions)
-│   ├── models/
-│   └── repositories/
-├── inventory/          # Inventory management (products, stock, locations, reservations)
-│   ├── models/
-│   ├── repositories/
-│   ├── router.py
-│   ├── service.py
-│   └── schemas.py
-├── orders/             # Order management and lifecycle
-│   ├── models/
-│   ├── repository.py
-│   ├── router.py
-│   ├── service.py
-│   └── schemas.py
-├── mail/               # Email delivery (AWS SES)
-├── observability/      # Logging, monitoring, and application metrics
-└── bootstraps/         # Database seed scripts (roles, permissions, initial data)
-```
+---
 
-Supporting top-level directories:
+## Documentation
 
-```text
-alembic/        # database migrations
-docs/           # per-module documentation and screenshots
-integration/    # pytest integration suite (conftest fixtures + tests)
-```
+For more technical details you can review the documentation under [`docs/`](docs/):
+
+- [Architecture](docs/architecture.md) — layer division and folder structure
+- [Database design](docs/database_design.md) — pooling, timeouts, and other technical decisions
+- [Deployment](docs/deployment.md) — the AWS stack (ECS, RDS, Secrets Manager, DNS)
+- [Testing](docs/testing.md) — the integration suite and its Docker test database
+- Per-module docs — [auth](docs/modules/auth.md) · [users](docs/modules/users.md) · [rbac](docs/modules/rbac.md) · [inventory](docs/modules/inventory.md) · [orders](docs/modules/orders.md)
 
 ---
 
