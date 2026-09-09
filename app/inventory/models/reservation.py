@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database.base import Base
+from app.infra.database.base import Base
 from app.inventory.models.enums import ReservationStatus
 from app.inventory.models.stock import InventoryStock
 from app.orders.models.order import OrderItem

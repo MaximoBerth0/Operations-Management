@@ -7,7 +7,7 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from app.core.secrets import AWSSecretsManagerSettingsSource
+from app.infra.secrets import AWSSecretsManagerSettingsSource
 
 
 class Settings(BaseSettings):

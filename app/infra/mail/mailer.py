@@ -4,7 +4,7 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 
-from app.core.config import settings
+from app.infra.config import settings
 
 logger = logging.getLogger(__name__)
 

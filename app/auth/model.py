@@ -6,7 +6,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.database.base import Base
+from app.infra.database.base import Base
 
 if TYPE_CHECKING:
     from app.users.model import User

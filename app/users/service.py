@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security.passwords import hash_password
+from app.infra.security.passwords import hash_password
 from app.users.exceptions import UserAlreadyExists, UserNotFound
 from app.users.model import User
 from app.users.repository import UserRepository
@@ -25,7 +25,6 @@ class UserService:
             email=email,
             username=username,
             hashed_password=hash_password(password),
-            is_active=True,
         )
         await self.repo.create_user(user)
         logger.info("registered user", extra={"user_id": str(user.id), "email": email})
@@ -35,7 +34,16 @@ class UserService:
         if not data:
             logger.debug("update_profile called with empty data", extra={"user_id": str(current_user.id)})
             return current_user
-        forbidden_fields = {"id", "is_active", "created_at", "updated_at"}
+        forbidden_fields = {
+            "id",
+            "is_active",
+            "created_at",
+            "updated_at",
+            # is_active is derived from these, so they must not be self-editable
+            "disabled_at",
+            "disabled_by",
+            "reason",
+        }
         safe_data = {k: v for k, v in data.items() if k not in forbidden_fields}
         if not safe_data:
             logger.warning("update_profile: all fields were forbidden", extra={"user_id": str(current_user.id), "attempted_fields": list(data.keys())})
@@ -100,7 +108,7 @@ class UserService:
     ) -> User:
         user = await self.repo.get_by_id(user_id)
         if not user:
-            logger.warning("enable_account: user not found", extra={"user_id": user_id})
+            logger.warning("disable_account: user not found", extra={"user_id": user_id})
             raise UserNotFound("User not found")
 
         user.disabled_at = datetime.now(timezone.utc)

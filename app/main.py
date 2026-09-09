@@ -1,12 +1,11 @@
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from app.auth.routers import router as auth_router
-from app.core.config import settings
-from app.core.global_errors import AppError
+from app.common.handlers import register_exception_handlers
+from app.infra.config import settings
 from app.inventory.router import router as inventory_router
 from app.observability.health import router as health_router
 from app.observability.logging import setup_logging
@@ -37,20 +36,7 @@ app.add_middleware(CORSMiddleware,
 )
 
 # Exception handlers
-@app.exception_handler(AppError)
-async def app_error_handler(request: Request, exc: AppError):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"error_code": exc.error_code, "detail": exc.message}
-    )
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
-    return JSONResponse(
-        status_code=500,
-        content={"error_code": "INTERNAL_ERROR", "detail": "An unexpected error occurred"}
-    )
+register_exception_handlers(app)
 
 # Routers
 app.include_router(health_router)

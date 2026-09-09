@@ -1,4 +1,4 @@
-from app.core.global_errors import AppError
+from app.common.errors import AppError
 
 
 class AuthError(AppError):
@@ -17,6 +17,15 @@ class InvalidCredentials(AuthError):
             message=message,
             status_code=401,
             error_code="INVALID_CREDENTIALS",
+        )
+
+
+class AccountDisabled(AuthError):
+    def __init__(self, message: str = "Account is disabled"):
+        super().__init__(
+            message=message,
+            status_code=403,
+            error_code="ACCOUNT_DISABLED",
         )
 
 

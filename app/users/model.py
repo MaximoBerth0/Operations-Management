@@ -2,11 +2,11 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, Uuid
+from sqlalchemy import DateTime, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.database.base import Base
+from app.infra.database.base import Base
 from app.rbac.models.role import Role
 from app.rbac.models.user_role import user_roles
 
@@ -39,12 +39,6 @@ class User(Base):
 
     hashed_password: Mapped[str] = mapped_column(
         String(150),
-        nullable=False,
-    )
-
-    is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
         nullable=False,
     )
 
@@ -88,3 +82,7 @@ class User(Base):
         back_populates="users",
         lazy="selectin",
     )
+
+    @property
+    def is_active(self) -> bool:
+        return self.disabled_at is None

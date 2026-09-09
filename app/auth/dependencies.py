@@ -4,13 +4,13 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.exceptions import TokenExpired, TokenInvalid
+from app.auth.exceptions import AccountDisabled, TokenExpired, TokenInvalid
 from app.auth.repositories.password_reset import PasswordResetTokenRepository
 from app.auth.repositories.refresh_token import RefreshTokenRepository
 from app.auth.service import AuthService
-from app.core.security.tokens import verify_access_token
-from app.database.session import get_session
-from app.mail.mailer import Mailer
+from app.infra.database.session import get_session
+from app.infra.mail.mailer import Mailer
+from app.infra.security.tokens import verify_access_token
 from app.users.model import User
 from app.users.repository import UserRepository
 
@@ -52,6 +52,11 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
+
+    # checked on every request so disabling an account takes effect immediately,
+    # rather than when its already-issued access token expires
+    if not user.is_active:
+        raise AccountDisabled()
 
     return user
 

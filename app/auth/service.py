@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from app.auth.exceptions import (
+    AccountDisabled,
     InvalidCredentials,
     TokenExpired,
     TokenInvalid,
@@ -9,17 +10,17 @@ from app.auth.exceptions import (
 from app.auth.repositories.password_reset import PasswordResetTokenRepository
 from app.auth.repositories.refresh_token import RefreshTokenRepository
 from app.auth.schemas import TokenResponse
-from app.core.config import settings
-from app.core.security.passwords import (
+from app.infra.config import settings
+from app.infra.mail.mailer import Mailer
+from app.infra.security.passwords import (
     hash_password,
     verify_password,
 )
-from app.core.security.tokens import (
+from app.infra.security.tokens import (
     create_access_token,
     generate_refresh_token,
     generate_reset_token,
 )
-from app.mail.mailer import Mailer
 from app.users.model import User
 from app.users.repository import UserRepository
 
@@ -45,6 +46,10 @@ class AuthService:
         if not user or not verify_password(password, user.hashed_password):
             logger.warning("login: invalid credentials", extra={"email": email})
             raise InvalidCredentials()
+
+        if not user.is_active:
+            logger.warning("login: account disabled", extra={"user_id": str(user.id)})
+            raise AccountDisabled()
 
         access_token = create_access_token(
             user.id,
@@ -89,6 +94,18 @@ class AuthService:
             logger.warning("refresh_session: refresh token expired", extra={"user_id": str(token.user_id)})
             raise TokenExpired("Invalid refresh token.")
 
+        # resolve the user before rotating anything: a refresh token issued
+        # before the account was disabled must not mint a new access token
+        user = await self.user_repo.get_by_id(token.user_id)
+
+        if not user:
+            logger.warning("refresh_session: user not found", extra={"user_id": str(token.user_id)})
+            raise TokenInvalid("Invalid refresh token.")
+
+        if not user.is_active:
+            logger.warning("refresh_session: account disabled", extra={"user_id": str(user.id)})
+            raise AccountDisabled()
+
         await self.refresh_repo.revoke(token.id)
 
         new_refresh_token = generate_refresh_token()
@@ -102,9 +119,10 @@ class AuthService:
             expires_at=new_expires_at,
         )
 
-        user = await self.user_repo.get_by_id(token.user_id)
-        roles = [role.name for role in user.roles] if user else []
-        access_token = create_access_token(token.user_id, roles=roles)
+        access_token = create_access_token(
+            token.user_id,
+            roles=[role.name for role in user.roles],
+        )
 
         logger.info("session refreshed", extra={"user_id": str(token.user_id)})
         return TokenResponse(
@@ -115,8 +133,10 @@ class AuthService:
     async def forgot_password(self, email: str) -> None:
         user = await self.user_repo.get_by_email(email)
 
-        if not user:
-            logger.info("forgot_password: no user for email", extra={"email": email})
+        # same silent return for a disabled account as for an unknown address,
+        # so the endpoint stays non-enumerable
+        if not user or not user.is_active:
+            logger.info("forgot_password: no eligible user for email", extra={"email": email})
             return
 
         await self.reset_repo.invalidate_all_for_user(user.id)
@@ -151,6 +171,11 @@ class AuthService:
         if not user:
             logger.warning("reset_password: user not found", extra={"user_id": str(reset.user_id)})
             raise TokenInvalid("Invalid reset token")
+
+        # a token issued before the account was disabled must not let the user back in
+        if not user.is_active:
+            logger.warning("reset_password: account disabled", extra={"user_id": str(user.id)})
+            raise AccountDisabled()
 
         user.hashed_password = hash_password(new_password)
         await self.user_repo.save_user(user)

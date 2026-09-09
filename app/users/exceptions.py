@@ -1,4 +1,4 @@
-from app.core.global_errors import AppError
+from app.common.errors import AppError
 
 
 class UserError(AppError):

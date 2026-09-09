@@ -25,13 +25,11 @@ class UserRepository:
         return result.scalars().all()
 
     async def enable_account(self, user: User) -> User:
-        user.is_active = True
         await self.session.commit()
         await self.session.refresh(user)
         return user
 
     async def disable_account(self, user: User) -> User:
-        user.is_active = False
         await self.session.commit()
         await self.session.refresh(user)
         return user

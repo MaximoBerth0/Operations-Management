@@ -6,11 +6,18 @@ docker compose -f docker-compose-test.yml down test-db
 
 import os
 import uuid
+from datetime import datetime, timezone
 
 # environment variables — must be set before any app import
 os.environ["ENV"] = "test"
 os.environ["DEBUG"] = "true"
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://user:password@localhost:5432/test_db"
+# TEST_DATABASE_URL lets you point the suite at a test DB on another port/host
+# (e.g. when 5432 is already taken); it must never point at a real database —
+# db_session drops every table at the end of each test.
+os.environ["DATABASE_URL"] = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://user:password@localhost:5432/test_db",
+)
 os.environ["SECRET_KEY"] = "test-secret-key-at-least-32-characters-long"
 os.environ["JWT_ALGORITHM"] = "HS256"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "15"
@@ -21,7 +28,7 @@ os.environ["SENDER_EMAIL"] = "no-reply@test"
 os.environ["APP_BASE_URL"] = "http://test"
 
 # clear settings cache so test env vars take effect
-from app.core.config import get_settings
+from app.infra.config import get_settings
 
 get_settings.cache_clear()
 
@@ -40,15 +47,15 @@ import app.rbac.models.user_role
 import app.users.model
 import pytest
 import pytest_asyncio
-from app.core.constants.inventory_permissions import INVENTORY_PERMISSIONS
-from app.core.constants.order_permissions import ORDER_PERMISSIONS
-from app.core.constants.system_permissions import SYSTEM_PERMISSIONS
-from app.core.constants.system_roles import SYSTEM_ROLES
-from app.core.constants.user_permissions import USER_PERMISSIONS
-from app.core.security.passwords import hash_password
-from app.core.security.tokens import create_access_token
-from app.database.base import Base
-from app.database.session import get_session
+from app.common.constants.inventory_permissions import INVENTORY_PERMISSIONS
+from app.common.constants.order_permissions import ORDER_PERMISSIONS
+from app.common.constants.system_permissions import SYSTEM_PERMISSIONS
+from app.common.constants.system_roles import SYSTEM_ROLES
+from app.common.constants.user_permissions import USER_PERMISSIONS
+from app.infra.database.base import Base
+from app.infra.database.session import get_session
+from app.infra.security.passwords import hash_password
+from app.infra.security.tokens import create_access_token
 from app.main import app
 from app.rbac.models.permission import Permission
 from app.rbac.models.role import Role
@@ -165,13 +172,17 @@ async def _make_user(
     email: str,
     username: str,
     password: str = "password123",
-    is_active: bool = True,
+    disabled_at: datetime | None = None,
+    reason: str | None = None,
 ) -> User:
+    # `is_active` is a read-only property derived from `disabled_at`, so account
+    # state is set through the audit columns rather than a boolean flag.
     user = User(
         email=email,
         username=username,
         hashed_password=hash_password(password),
-        is_active=is_active,
+        disabled_at=disabled_at,
+        reason=reason,
     )
     db_session.add(user)
     await db_session.commit()
@@ -222,6 +233,20 @@ async def client_user(db_session, seeded):
 async def plain_user(db_session):
     """User with no role at all — useful for 401 vs 403 distinction."""
     user = await _make_user(db_session, email="plain@test.com", username="plain")
+    return user
+
+
+@pytest_asyncio.fixture
+async def disabled_user(db_session, seeded):
+    """Employee whose account is disabled — `is_active` reads False."""
+    user = await _make_user(
+        db_session,
+        email="disabled@test.com",
+        username="disabled",
+        disabled_at=datetime.now(timezone.utc),
+        reason="Policy violation",
+    )
+    await _assign_role(db_session, user_id=user.id, role_id=seeded["roles"]["employee"].id)
     return user
 
 # auth_headers: request this fixture, then call it inline: auth_headers(user).

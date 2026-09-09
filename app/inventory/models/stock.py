@@ -15,7 +15,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database.base import Base
+from app.infra.database.base import Base
 from app.inventory.models.enums import StockMovementType
 
 if TYPE_CHECKING:

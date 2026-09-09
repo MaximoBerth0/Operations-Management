@@ -3,7 +3,7 @@ import uuid
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.session import get_session
+from app.infra.database.session import get_session
 from app.inventory.models.location import Location
 from app.inventory.repositories.category_repo import CategoryRepository
 from app.inventory.repositories.location_repo import LocationRepository

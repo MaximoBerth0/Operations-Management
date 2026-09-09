@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, List
 from sqlalchemy import String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database.base import Base
+from app.infra.database.base import Base
 from app.rbac.models.role_permission import role_permissions
 from app.rbac.models.user_role import user_roles
 

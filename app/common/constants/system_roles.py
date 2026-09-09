@@ -1,7 +1,7 @@
-from app.core.constants.inventory_permissions import INVENTORY_PERMISSIONS
-from app.core.constants.order_permissions import ORDER_PERMISSIONS
-from app.core.constants.system_permissions import SYSTEM_PERMISSIONS
-from app.core.constants.user_permissions import USER_PERMISSIONS
+from app.common.constants.inventory_permissions import INVENTORY_PERMISSIONS
+from app.common.constants.order_permissions import ORDER_PERMISSIONS
+from app.common.constants.system_permissions import SYSTEM_PERMISSIONS
+from app.common.constants.user_permissions import USER_PERMISSIONS
 
 SYSTEM_ROLES = {
     "admin": SYSTEM_PERMISSIONS

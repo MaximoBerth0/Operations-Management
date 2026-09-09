@@ -160,9 +160,36 @@ async def test_list_users_forbidden(client, client_user, auth_headers):
 
 # PATCH users/{user_id}/enable
 
-async def test_enable_user(client, employee_user, admin_user, auth_headers):
-    response = await client.patch(f"/users/{employee_user.id}/enable", headers=auth_headers(admin_user))
+async def test_enable_user(client, disabled_user, admin_user, auth_headers, db_session):
+    assert disabled_user.is_active is False
+
+    response = await client.patch(
+        f"/users/{disabled_user.id}/enable", headers=auth_headers(admin_user)
+    )
     assert response.status_code == 200
+    assert response.json()["is_active"] is True
+
+    # the audit trail `is_active` derives from must be cleared
+    await db_session.refresh(disabled_user)
+    assert disabled_user.disabled_at is None
+    assert disabled_user.disabled_by is None
+    assert disabled_user.reason is None
+
+
+async def test_enable_user_already_active(client, employee_user, admin_user, auth_headers):
+    response = await client.patch(
+        f"/users/{employee_user.id}/enable", headers=auth_headers(admin_user)
+    )
+    assert response.status_code == 200
+    assert response.json()["is_active"] is True
+
+
+async def test_enable_user_not_found(client, admin_user, auth_headers):
+    response = await client.patch(
+        f"/users/{uuid.uuid4()}/enable", headers=auth_headers(admin_user)
+    )
+    assert response.status_code == 404
+
 
 async def test_enable_user_forbidden(client, client_user, auth_headers):
     response = await client.patch(
@@ -171,18 +198,48 @@ async def test_enable_user_forbidden(client, client_user, auth_headers):
     assert response.status_code == 403
 
 
-# PATCH users/{user_id}/disable
+# PATCH users/{user_id}/disable-account
 
-async def test_disable_user(client, employee_user, admin_user, auth_headers):
+async def test_disable_user(client, employee_user, admin_user, auth_headers, db_session):
+    assert employee_user.is_active is True
+
     response = await client.patch(
         f"/users/{employee_user.id}/disable-account",
         json={"reason": "Policy violation"},
         headers=auth_headers(admin_user),
     )
     assert response.status_code == 200
+    assert response.json()["is_active"] is False
+
+    # who disabled the account, when, and why
+    await db_session.refresh(employee_user)
+    assert employee_user.disabled_at is not None
+    assert employee_user.disabled_by == admin_user.id
+    assert employee_user.reason == "Policy violation"
+
+
+async def test_disable_user_not_found(client, admin_user, auth_headers):
+    response = await client.patch(
+        f"/users/{uuid.uuid4()}/disable-account",
+        json={"reason": "Policy violation"},
+        headers=auth_headers(admin_user),
+    )
+    assert response.status_code == 404
+
+
+async def test_disable_user_requires_reason(client, employee_user, admin_user, auth_headers):
+    response = await client.patch(
+        f"/users/{employee_user.id}/disable-account",
+        json={"reason": ""},
+        headers=auth_headers(admin_user),
+    )
+    assert response.status_code == 422
+
 
 async def test_disable_user_forbidden(client, client_user, auth_headers):
     response = await client.patch(
-        f"/users/{client_user.id}/disable-account", headers=auth_headers(client_user)
+        f"/users/{client_user.id}/disable-account",
+        json={"reason": "Policy violation"},
+        headers=auth_headers(client_user),
     )
     assert response.status_code == 403

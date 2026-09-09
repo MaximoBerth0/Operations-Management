@@ -6,7 +6,7 @@ import jwt
 from jwt import ExpiredSignatureError, PyJWTError
 
 from app.auth.exceptions import TokenExpired, TokenInvalid
-from app.core.config import settings
+from app.infra.config import settings
 
 """
 - create access JWT tokens.

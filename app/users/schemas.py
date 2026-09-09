@@ -20,10 +20,6 @@ class UserUpdateRequest(BaseModel):
     username: Optional[str] = Field(default=None, min_length=3, max_length=150)
 
 
-class UserStatusUpdateRequest(BaseModel):
-    is_active: bool
-
-
 class DisableUserRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=500)
 

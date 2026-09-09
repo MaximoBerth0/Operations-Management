@@ -1,6 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Table, Uuid
 
-from app.database.base import Base
+from app.infra.database.base import Base
 
 role_permissions = Table(
     "role_permissions",

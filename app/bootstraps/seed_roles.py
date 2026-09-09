@@ -1,5 +1,5 @@
-from app.core.constants.system_roles import SYSTEM_ROLES
-from app.database.session import get_script_session
+from app.common.constants.system_roles import SYSTEM_ROLES
+from app.infra.database.session import get_script_session
 from app.rbac.repositories.permission_repo import PermissionRepository
 from app.rbac.repositories.role_repo import RoleRepository
 

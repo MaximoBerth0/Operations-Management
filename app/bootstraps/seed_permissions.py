@@ -1,8 +1,8 @@
-from app.core.constants.inventory_permissions import INVENTORY_PERMISSIONS
-from app.core.constants.order_permissions import ORDER_PERMISSIONS
-from app.core.constants.system_permissions import SYSTEM_PERMISSIONS
-from app.core.constants.user_permissions import USER_PERMISSIONS
-from app.database.session import get_script_session
+from app.common.constants.inventory_permissions import INVENTORY_PERMISSIONS
+from app.common.constants.order_permissions import ORDER_PERMISSIONS
+from app.common.constants.system_permissions import SYSTEM_PERMISSIONS
+from app.common.constants.user_permissions import USER_PERMISSIONS
+from app.infra.database.session import get_script_session
 from app.rbac.models.permission import Permission
 from app.rbac.repositories.permission_repo import PermissionRepository
 

@@ -14,7 +14,6 @@ Fixtures and helpers come from integration/conftest.py:
 
 import uuid
 
-
 # POST inventory/categories 
 
 async def test_create_category(client, admin_user, auth_headers):
