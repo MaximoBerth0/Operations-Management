@@ -4,6 +4,7 @@ import uuid
 from fastapi import APIRouter, Depends, status
 
 from app.auth.dependencies import get_current_user
+from app.infra.rate_limit.dependencies import rate_limit
 from app.rbac.dependencies import require_permission
 from app.users.dependencies import provide_user_service
 from app.users.model import User
@@ -25,6 +26,7 @@ router = APIRouter(prefix="/users", tags=["USERS"])
     "/register",
     response_model=UserReadResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[rate_limit("register")],
 )
 async def register_user(
     data: UserCreateRequest,

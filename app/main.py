@@ -1,4 +1,6 @@
 import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.auth.routers import router as auth_router
 from app.common.handlers import register_exception_handlers
 from app.infra.config import settings
+from app.infra.redis.client import shutdown as redis_shutdown
+from app.infra.redis.client import startup as redis_startup
 from app.inventory.router import router as inventory_router
 from app.observability.health import router as health_router
 from app.observability.logging import setup_logging
@@ -18,8 +22,16 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    await redis_startup()
+    yield
+    await redis_shutdown()
+
+
 app = FastAPI(
     title=settings.APP_NAME,
+    lifespan=lifespan,
 # The documentation is shown in production intentionally
 #   docs_url=None if settings.ENV == "prod" else "/docs",
 #   redoc_url=None if settings.ENV == "prod" else "/redoc",

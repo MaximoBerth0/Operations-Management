@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import model_validator
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -8,6 +8,11 @@ from pydantic_settings import (
 )
 
 from app.infra.secrets import AWSSecretsManagerSettingsSource
+
+
+class RateLimitOverride(BaseModel):
+    capacity: int | None = Field(default=None, gt=0)
+    refill_per_second: float | None = Field(default=None, gt=0)
 
 
 class Settings(BaseSettings):
@@ -47,6 +52,16 @@ class Settings(BaseSettings):
     # Server
     UVICORN_WORKERS: int = 1
     GUNICORN_WORKERS: int = 4
+
+    # Redis
+    REDIS_URL: str = ""
+    REDIS_CONNECT_TIMEOUT: int = 2
+    REDIS_COMMAND_TIMEOUT: int = 2
+    REDIS_MAX_CONNECTIONS: int = 50
+
+    # Rate limiting
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_OVERRIDES: dict[str, RateLimitOverride] = {}
 
     # CORS
     CORS_ALLOW_ORIGINS: list[str]
@@ -89,6 +104,8 @@ class Settings(BaseSettings):
                 "SECRET_KEY must be at least 32 characters in prod"
             assert not self.DEBUG, \
                 "DEBUG must be False in prod"
+            assert not self.RATE_LIMIT_ENABLED or self.REDIS_URL, \
+                "REDIS_URL must be set in prod while RATE_LIMIT_ENABLED is on"
         return self
 
 

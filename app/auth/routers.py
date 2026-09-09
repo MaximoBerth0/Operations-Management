@@ -13,6 +13,7 @@ from app.auth.schemas import (
     TokenResponse,
 )
 from app.auth.service import AuthService
+from app.infra.rate_limit.dependencies import rate_limit
 from app.users.model import User
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["AUTH"])
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[rate_limit("login")])
 async def login(
     data: LoginRequest,
     service: AuthService = Depends(get_auth_service),
@@ -31,7 +32,11 @@ async def login(
     return tokens
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    dependencies=[rate_limit("token_refresh")],
+)
 async def refresh_tokens(
     data: RefreshTokensRequest,
     service: AuthService = Depends(get_auth_service),
@@ -52,7 +57,11 @@ async def logout(
     logger.info("logout endpoint succeeded")
 
 
-@router.post("/forgot", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/forgot",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[rate_limit("password_reset")],
+)
 async def forgot_password(
     data: ForgotPasswordRequest,
     service: AuthService = Depends(get_auth_service),
@@ -62,7 +71,11 @@ async def forgot_password(
     logger.info("forgot_password endpoint succeeded", extra={"email": data.email})
 
 
-@router.post("/reset", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/reset",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[rate_limit("password_reset")],
+)
 async def reset_password(
     data: ResetPasswordRequest,
     service: AuthService = Depends(get_auth_service),
