@@ -9,12 +9,16 @@ from app.auth.repositories.password_reset import PasswordResetTokenRepository
 from app.auth.repositories.refresh_token import RefreshTokenRepository
 from app.auth.service import AuthService
 from app.infra.database.session import get_session
-from app.infra.mail.mailer import Mailer
 from app.infra.security.tokens import verify_access_token
 from app.users.model import User
 from app.users.repository import UserRepository
+from app.worker.tasks.email import defer_reset_email
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+async def _send_reset_email(*, email: str, token: str) -> None:
+    await defer_reset_email(email=email, token=token)
 
 
 async def get_current_user(
@@ -67,5 +71,5 @@ def get_auth_service(session: AsyncSession = Depends(get_session)) -> AuthServic
         user_repo=UserRepository(session),
         refresh_repo=RefreshTokenRepository(session),
         reset_repo=PasswordResetTokenRepository(session),
-        mailer=Mailer() 
+        reset_email_sender=_send_reset_email,
     )

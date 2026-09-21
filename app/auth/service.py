@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Protocol
 
 from app.auth.exceptions import (
     AccountDisabled,
@@ -11,7 +12,6 @@ from app.auth.repositories.password_reset import PasswordResetTokenRepository
 from app.auth.repositories.refresh_token import RefreshTokenRepository
 from app.auth.schemas import TokenResponse
 from app.infra.config import settings
-from app.infra.mail.mailer import Mailer
 from app.infra.security.passwords import (
     hash_password,
     verify_password,
@@ -26,18 +26,35 @@ from app.users.repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
+
+class ResetEmailSender(Protocol):
+    """Injected so the flow is testable and so auth does not import the
+    worker/mail layer directly. The real implementation defers a Procrastinate
+    job instead of calling SES inline."""
+
+    async def __call__(self, *, email: str, token: str) -> None: ...
+
+
+async def _unsent_reset_email(*, email: str, token: str) -> None:
+    """Default sender if AuthService is ever built without one wired in."""
+    logger.error(
+        "password reset email not delivered, no sender wired into AuthService",
+        extra={"email": email},
+    )
+
+
 class AuthService:
     def __init__(
         self,
         user_repo: UserRepository,
         refresh_repo: RefreshTokenRepository,
         reset_repo: PasswordResetTokenRepository,
-        mailer: Mailer
+        reset_email_sender: ResetEmailSender | None = None,
     ):
         self.user_repo = user_repo
         self.refresh_repo = refresh_repo
         self.reset_repo = reset_repo
-        self.mailer = mailer
+        self._send_reset_email = reset_email_sender or _unsent_reset_email
 
 
     async def login(self, email: str, password: str) -> TokenResponse:
@@ -150,8 +167,8 @@ class AuthService:
             expires_at=expires_at,
         )
 
-        await self.mailer.send_reset_email(user.email, token)
-        logger.info("password reset email sent", extra={"user_id": str(user.id)})
+        await self._send_reset_email(email=user.email, token=token)
+        logger.info("password reset email deferred", extra={"user_id": str(user.id)})
 
 
     async def reset_password(self, token: str, new_password: str) -> None:

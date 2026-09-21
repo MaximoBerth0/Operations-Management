@@ -4,10 +4,13 @@ LOCAL_DATABASE_URL := postgresql+asyncpg://postgres:postgres@localhost:5432/mana
 # Run alembic with the local URL injected.
 ALEMBIC := DATABASE_URL=$(LOCAL_DATABASE_URL) alembic
 
+# Run procrastinate with the local URL injected.
+PROCRASTINATE := DATABASE_URL=$(LOCAL_DATABASE_URL) python -m procrastinate --app=app.worker.app.app
+
 # Compose files now live in docker/.
 COMPOSE := docker compose -f docker/docker-compose.yml
 
-.PHONY: db-up db-stop db-down db-reset migrate revision current heads
+.PHONY: db-up db-stop db-down db-reset migrate revision current heads worker-schema worker
 
 db-up:        ## Start the database in the background
 	$(COMPOSE) up -d db
@@ -33,3 +36,10 @@ current:      ## Show the DB's current revision
 
 heads:        ## Show the latest migration file revision
 	$(ALEMBIC) heads
+
+## Worker (require the db to be running)
+worker-schema: ## Apply the Procrastinate job tables (once, or after an upgrade)
+	$(PROCRASTINATE) schema --apply
+
+worker:       ## Run the Procrastinate worker
+	$(PROCRASTINATE) worker
