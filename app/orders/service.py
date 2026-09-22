@@ -143,6 +143,9 @@ class OrderService:
         if order is None:
             logger.warning("complete_order: order not found", extra={"order_id": order_id})
             raise OrderNotFound()
+        if order.status != OrderStatus.CONFIRMED:
+            logger.warning("complete_order: wrong status order, should be CONFIRMED", extra={"order_id": order_id, "invalid_status": order.status})
+            raise InvalidOrderStatus()
 
         for item in order.items:
             if item.reservation is not None:

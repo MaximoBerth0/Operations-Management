@@ -542,7 +542,7 @@ class InventoryService:
         return reservation
 
     async def release_for_item(self, reservation_id: uuid.UUID) -> StockReservation:
-        reservation = await self.stock_repo.get_reservation_by_id(reservation_id)
+        reservation = await self.stock_repo.get_reservation_by_id_for_update(reservation_id)
         if not reservation:
             logger.warning("release_for_item: reservation not found", extra={"reservation_id": reservation_id})
             raise ReservationNotFound()
@@ -565,7 +565,7 @@ class InventoryService:
         return reservation
 
     async def fulfill_for_item(self, reservation_id: uuid.UUID) -> StockReservation:
-        reservation = await self.stock_repo.get_reservation_by_id(reservation_id)
+        reservation = await self.stock_repo.get_reservation_by_id_for_update(reservation_id)
         if not reservation:
             logger.warning("fulfill_for_item: reservation not found", extra={"reservation_id": reservation_id})
             raise ReservationNotFound()

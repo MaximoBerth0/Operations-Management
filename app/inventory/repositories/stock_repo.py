@@ -60,6 +60,17 @@ class StockRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_reservation_by_id_for_update(
+        self, reservation_id: uuid.UUID
+    ) -> StockReservation | None:
+        stmt = (
+            select(StockReservation)
+            .where(StockReservation.id == reservation_id)
+            .with_for_update()
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_available_stock_by_product(
         self, product_id: uuid.UUID
     ) -> InventoryStock | None:
