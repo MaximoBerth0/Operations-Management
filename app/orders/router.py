@@ -172,9 +172,10 @@ async def cancel_order(
 )
 async def complete_order(
     id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     service: OrderService = Depends(get_order_service),
 ) -> OrderResponse:
-    logger.info("complete_order endpoint called", extra={"order_id": id})
-    order = await service.complete_order(order_id=id)
+    logger.info("complete_order endpoint called", extra={"order_id": id, "user_id": current_user.id})
+    order = await service.complete_order(order_id=id, user_id=current_user.id)
     logger.info("complete_order endpoint succeeded", extra={"order_id": id})
     return order

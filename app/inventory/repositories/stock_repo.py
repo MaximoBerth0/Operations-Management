@@ -115,6 +115,10 @@ class StockRepository:
         await self.db.refresh(movement)
         return movement
 
+    def add_movement(self, movement: StockMovement) -> None:
+        """Stage a movement without committing, so it joins the caller's transaction."""
+        self.db.add(movement)
+
     async def list_stock_movements(
         self, stock_id: uuid.UUID, limit: int = 100
     ) -> list[StockMovement]:

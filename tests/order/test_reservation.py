@@ -1,4 +1,7 @@
-from app.inventory.models.stock import InventoryStock
+from sqlalchemy import select
+
+from app.inventory.models.enums import StockMovementType
+from app.inventory.models.stock import InventoryStock, StockMovement
 
 
 async def _read_stock(db_session, stock_id: int) -> InventoryStock:
@@ -148,6 +151,7 @@ async def test_complete_order(
     # expire_all() also expires the user fixtures, and reading
     # user.id afterwards would lazy-load outside the async greenlet.
     headers = auth_headers(employee_user, location_id=location_id)
+    employee_id = employee_user.id
     db_session.expire_all()
 
     response = await client.patch(
@@ -163,6 +167,15 @@ async def test_complete_order(
     row = await _read_stock(db_session, stock["stock_id"])
     assert row.quantity == 7
     assert row.reserved_quantity == 0
+
+    # the sale is recorded as an OUT movement by the user who completed the order
+    movements = (await db_session.scalars(
+        select(StockMovement).where(StockMovement.stock_id == stock["stock_id"])
+    )).all()
+    out = [m for m in movements if m.movement_type == StockMovementType.OUT]
+    assert len(out) == 1
+    assert (out[0].quantity, out[0].previous_quantity, out[0].new_quantity) == (3, 10, 7)
+    assert out[0].created_by == employee_id
 
 
 async def test_complete_order_forbidden(

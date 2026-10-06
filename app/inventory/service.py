@@ -619,7 +619,7 @@ class InventoryService:
         logger.info("release_for_item: reservation released", extra={"reservation_id": reservation.id, "stock_id": stock.id})
         return reservation
 
-    async def fulfill_for_item(self, reservation_id: uuid.UUID) -> StockReservation:
+    async def fulfill_for_item(self, reservation_id: uuid.UUID, user_id: uuid.UUID) -> StockReservation:
         reservation = await self.stock_repo.get_reservation_by_id_for_update(reservation_id)
         if not reservation:
             logger.warning("fulfill_for_item: reservation not found", extra={"reservation_id": reservation_id})
@@ -636,10 +636,21 @@ class InventoryService:
             logger.warning("fulfill_for_item: stock not found", extra={"reservation_id": reservation.id, "stock_id": reservation.stock_id})
             raise StockNotFound()
 
+        previous_quantity = stock.quantity
         stock.quantity -= reservation.quantity
         stock.reserved_quantity -= reservation.quantity
         reservation.status = ReservationStatus.FULFILLED
         self._sync_low_stock(stock)
+
+        movement = StockMovement(
+            stock_id=stock.id,
+            movement_type=StockMovementType.OUT,
+            quantity=reservation.quantity,
+            previous_quantity=previous_quantity,
+            new_quantity=stock.quantity,
+            created_by=user_id,
+        )
+        self.stock_repo.add_movement(movement)
 
         logger.info("fulfill_for_item: reservation fulfilled", extra={"reservation_id": reservation.id, "stock_id": stock.id})
         return reservation

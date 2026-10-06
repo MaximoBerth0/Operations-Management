@@ -139,7 +139,7 @@ class OrderService:
         logger.info("cancel_order: order cancelled", extra={"order_id": order_id})
         return order
 
-    async def complete_order(self, order_id: uuid.UUID) -> Order:
+    async def complete_order(self, order_id: uuid.UUID, user_id: uuid.UUID) -> Order:
         order = await self.order_repo.get_order(order_id)
         if order is None:
             logger.warning("complete_order: order not found", extra={"order_id": order_id})
@@ -151,7 +151,7 @@ class OrderService:
         for item in order.items:
             if item.reservation is not None:
                 await self.inventory_service.fulfill_for_item(
-                    item.reservation.id
+                    item.reservation.id, user_id
                 )
 
         order.complete()
