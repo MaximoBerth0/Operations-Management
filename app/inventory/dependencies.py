@@ -10,11 +10,17 @@ from app.inventory.repositories.location_repo import LocationRepository
 from app.inventory.repositories.product_repo import ProductRepository
 from app.inventory.repositories.reservation_repo import ReservationRepository
 from app.inventory.repositories.stock_repo import StockRepository
-from app.inventory.service import InventoryService
+from app.inventory.service import InventoryService, LowStockNotifier
+from app.worker.tasks.stock_alert import defer_low_stock_alert
+
+
+def get_low_stock_notifier() -> LowStockNotifier:
+    return defer_low_stock_alert
 
 
 def provide_inventory_service(
     db: AsyncSession = Depends(get_session),
+    low_stock_notifier: LowStockNotifier = Depends(get_low_stock_notifier),
 ) -> InventoryService:
     return InventoryService(
         stock_repo=StockRepository(db),
@@ -22,6 +28,7 @@ def provide_inventory_service(
         category_repo=CategoryRepository(db),
         location_repo=LocationRepository(db),
         reservation_repo=ReservationRepository(db),
+        low_stock_notifier=low_stock_notifier,
     )
 
 

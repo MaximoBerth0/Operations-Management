@@ -1,4 +1,5 @@
 import asyncio
+import html
 import logging
 
 import boto3
@@ -74,6 +75,56 @@ class Mailer:
         )
 
         logger.info("reset email sent", extra={"email": email})
+
+    async def send_low_stock_email(
+        self,
+        email: str,
+        product_name: str,
+        sku: str,
+        location_name: str,
+        available: int,
+        reorder_point: int,
+    ) -> None:
+        product = html.escape(product_name)
+        location = html.escape(location_name)
+
+        subject = f"Low stock: {sku} at {location_name}"
+
+        body_text = (
+            "Available stock has dropped to or below its reorder point.\n\n"
+            f"Product: {product_name} ({sku})\n"
+            f"Location: {location_name}\n"
+            f"Available: {available}\n"
+            f"Reorder point: {reorder_point}\n"
+        )
+
+        body_html = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>Low Stock Alert</h2>
+                <p>Available stock has dropped to or below its reorder point.</p>
+                <table style="border-collapse: collapse; font-size: 14px;">
+                    <tr><td style="padding: 4px 16px 4px 0; color: #555;">Product</td>
+                        <td><strong>{product}</strong> ({html.escape(sku)})</td></tr>
+                    <tr><td style="padding: 4px 16px 4px 0; color: #555;">Location</td>
+                        <td>{location}</td></tr>
+                    <tr><td style="padding: 4px 16px 4px 0; color: #555;">Available</td>
+                        <td><strong>{available}</strong></td></tr>
+                    <tr><td style="padding: 4px 16px 4px 0; color: #555;">Reorder point</td>
+                        <td>{reorder_point}</td></tr>
+                </table>
+            </body>
+        </html>
+        """
+
+        await self._send(
+            to=email,
+            subject=subject,
+            body_text=body_text,
+            body_html=body_html,
+        )
+
+        logger.info("low stock email sent", extra={"email": email, "sku": sku})
 
     async def _send(
         self,

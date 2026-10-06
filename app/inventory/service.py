@@ -36,7 +36,8 @@ RESERVATION:
 """
 import logging
 import uuid
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, Protocol
 
 from app.inventory.exceptions import (
     CategoryAlreadyExists,
@@ -75,6 +76,22 @@ from app.inventory.repositories.stock_repo import StockRepository
 
 logger = logging.getLogger(__name__)
 
+
+class LowStockNotifier(Protocol):
+    """Injected so inventory does not import the worker layer directly. The
+    real implementation defers a Procrastinate job."""
+
+    async def __call__(self, *, stock_id: uuid.UUID) -> None: ...
+
+
+async def _unsent_low_stock_alert(*, stock_id: uuid.UUID) -> None:
+    """Default notifier if InventoryService is ever built without one wired in."""
+    logger.error(
+        "low stock alert not delivered, no notifier wired into InventoryService",
+        extra={"stock_id": stock_id},
+    )
+
+
 class InventoryService:
     def __init__(
         self,
@@ -83,12 +100,15 @@ class InventoryService:
         category_repo: CategoryRepository,
         location_repo: LocationRepository,
         reservation_repo: ReservationRepository,
+        low_stock_notifier: LowStockNotifier | None = None,
     ):
         self.stock_repo = stock_repo
         self.product_repo = product_repo
         self.category_repo = category_repo
         self.location_repo = location_repo
         self.reservation_repo = reservation_repo
+        self._notify_low_stock = low_stock_notifier or _unsent_low_stock_alert
+        self._pending_low_stock: set[uuid.UUID] = set()
 
     # product
 
@@ -238,14 +258,38 @@ class InventoryService:
 
     # stock
 
+    def _sync_low_stock(self, stock: InventoryStock) -> bool:
+        """Call before the commit that persists a quantity change. """
+        available = stock.quantity - stock.reserved_quantity
+        is_low = stock.reorder_point > 0 and available <= stock.reorder_point
+
+        if is_low and stock.low_stock_alerted_at is None:
+            stock.low_stock_alerted_at = datetime.now(timezone.utc)
+            self._pending_low_stock.add(stock.id)
+            logger.info(
+                "_sync_low_stock: stock below reorder point",
+                extra={"stock_id": stock.id, "available": available, "reorder_point": stock.reorder_point},
+            )
+            return True
+
+        if not is_low and stock.low_stock_alerted_at is not None:
+            stock.low_stock_alerted_at = None
+            logger.info("_sync_low_stock: stock recovered", extra={"stock_id": stock.id, "available": available})
+
+        return False
+
+    async def flush_low_stock_alerts(self) -> None:
+        """Call only after the commit, so no alert goes out for a change that
+        rolled back."""
+        pending, self._pending_low_stock = self._pending_low_stock, set()
+        for stock_id in pending:
+            await self._notify_low_stock(stock_id=stock_id)
+
     async def initialize_stock(
         self, location_id: uuid.UUID, product_id: uuid.UUID, quantity: int, reorder_point: int
     ):
         quantity = abs(int(quantity))
         reorder_point = abs(int(reorder_point))
-
-        # ensure reorder_point doesn't exceed quantity
-        reorder_point = min(reorder_point, quantity)
 
         location = await self.location_repo.get_location(location_id)
         if not location:
@@ -271,6 +315,9 @@ class InventoryService:
         stock_creation = await self.stock_repo.initialize_stock(
             location_id, product_id, quantity, reorder_point
         )
+        if self._sync_low_stock(stock_creation):
+            await self.stock_repo.update_quantity_stock(stock_creation)
+            await self.flush_low_stock_alerts()
 
         logger.info(
             "initialize_stock: stock created",
@@ -303,8 +350,10 @@ class InventoryService:
             new_quantity=new_quantity,
             created_by=user_id,
         )
+        self._sync_low_stock(stock)
         await self.stock_repo.update_quantity_stock(stock)
         await self.stock_repo.create_movement(movement)
+        await self.flush_low_stock_alerts()
 
         logger.info(
             "add_stock: movement created",
@@ -341,8 +390,10 @@ class InventoryService:
             new_quantity=new_quantity,
             created_by=user_id,
         )
+        self._sync_low_stock(stock)
         await self.stock_repo.update_quantity_stock(stock)
         await self.stock_repo.create_movement(movement)
+        await self.flush_low_stock_alerts()
 
         logger.info(
             "remove_stock: movement created",
@@ -375,8 +426,10 @@ class InventoryService:
             created_by=user_id,
         )
 
+        self._sync_low_stock(stock)
         await self.stock_repo.update_quantity_stock(stock)
         await self.stock_repo.create_movement(movement)
+        await self.flush_low_stock_alerts()
 
         logger.info(
             "adjust_stock: movement created",
@@ -530,6 +583,7 @@ class InventoryService:
             raise InsufficientStock()
 
         stock.reserved_quantity += quantity
+        self._sync_low_stock(stock)
         reservation = await self.reservation_repo.create_reservation(
             order_item_id=order_item_id,
             stock_id=stock.id,
@@ -560,6 +614,7 @@ class InventoryService:
 
         stock.reserved_quantity -= reservation.quantity
         reservation.status = ReservationStatus.RELEASED
+        self._sync_low_stock(stock)
 
         logger.info("release_for_item: reservation released", extra={"reservation_id": reservation.id, "stock_id": stock.id})
         return reservation
@@ -584,6 +639,7 @@ class InventoryService:
         stock.quantity -= reservation.quantity
         stock.reserved_quantity -= reservation.quantity
         reservation.status = ReservationStatus.FULFILLED
+        self._sync_low_stock(stock)
 
         logger.info("fulfill_for_item: reservation fulfilled", extra={"reservation_id": reservation.id, "stock_id": stock.id})
         return reservation

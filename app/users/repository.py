@@ -4,6 +4,9 @@ from typing import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.rbac.models.permission import Permission
+from app.rbac.models.role_permission import role_permissions
+from app.rbac.models.user_role import user_roles
 from app.users.model import User
 
 
@@ -18,6 +21,19 @@ class UserRepository:
         stmt = select(User).where(User.email == email)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def list_emails_with_permission(self, code: str) -> list[str]:
+        """Emails of active users holding the permission through any of their roles."""
+        stmt = (
+            select(User.email)
+            .join(user_roles, user_roles.c.user_id == User.id)
+            .join(role_permissions, role_permissions.c.role_id == user_roles.c.role_id)
+            .join(Permission, Permission.id == role_permissions.c.permission_id)
+            .where(Permission.code == code, User.disabled_at.is_(None))
+            .distinct()
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def list_users(self, skip: int = 0, limit: int = 100) -> Sequence[User]:
         stmt = select(User).offset(skip).limit(limit)

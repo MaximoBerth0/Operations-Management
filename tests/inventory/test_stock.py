@@ -46,10 +46,10 @@ async def test_create_stock(client, admin_user, auth_headers, make_product, make
     assert body["reorder_point"] == 2
 
 
-async def test_create_stock_reorder_point_capped(
+async def test_create_stock_reorder_point_not_capped(
     client, admin_user, auth_headers, make_product, make_location
 ):
-    # service caps reorder_point at the initial quantity
+    # reorder_point is independent of the initial quantity
     product_id = await make_product(admin_user)
     location_id = await make_location(admin_user)
 
@@ -63,7 +63,7 @@ async def test_create_stock_reorder_point_capped(
         },
     )
     assert response.status_code == 201
-    assert response.json()["reorder_point"] == 5
+    assert response.json()["reorder_point"] == 99
 
 
 async def test_create_stock_duplicate(

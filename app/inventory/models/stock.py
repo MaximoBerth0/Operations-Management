@@ -48,6 +48,10 @@ class InventoryStock(Base):
     reserved_quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     # trigger alert
     reorder_point: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # set while available stock is at or below reorder_point, so an alert fires once per drop
+    low_stock_alerted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

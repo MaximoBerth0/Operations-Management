@@ -56,6 +56,7 @@ from app.infra.database.base import Base
 from app.infra.database.session import get_session
 from app.infra.security.passwords import hash_password
 from app.infra.security.tokens import create_access_token
+from app.inventory.dependencies import get_low_stock_notifier
 from app.main import app
 from app.rbac.models.permission import Permission
 from app.rbac.models.role import Role
@@ -151,14 +152,26 @@ async def seeded(db_session):
     await db_session.commit()
     return {"permissions": perm_map, "roles": role_map}
 
+# low_stock_alerts — stock ids the API asked to alert on, instead of
+# deferring real Procrastinate jobs
+
+@pytest.fixture
+def low_stock_alerts() -> list[uuid.UUID]:
+    return []
+
+
 # client — HTTP client wired to the test DB session
 
 @pytest_asyncio.fixture
-async def client(db_session):
+async def client(db_session, low_stock_alerts):
     async def override_get_db():
         yield db_session
 
+    async def record_low_stock_alert(*, stock_id: uuid.UUID) -> None:
+        low_stock_alerts.append(stock_id)
+
     app.dependency_overrides[get_session] = override_get_db
+    app.dependency_overrides[get_low_stock_notifier] = lambda: record_low_stock_alert
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

@@ -24,5 +24,6 @@ app = procrastinate.App(
     connector=procrastinate.PsycopgConnector(conninfo=_conninfo()),
     import_paths=[
         "app.worker.tasks.email",
+        "app.worker.tasks.stock_alert",
     ],
 )

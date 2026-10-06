@@ -114,6 +114,7 @@ class OrderService:
 
         order.status = OrderStatus.CONFIRMED
         await self.db.commit()
+        await self.inventory_service.flush_low_stock_alerts()
 
         logger.info("confirm_order: order confirmed", extra={"order_id": order_id, "location_id": location_id})
         return order
@@ -155,5 +156,6 @@ class OrderService:
 
         order.complete()
         await self.db.commit()
+        await self.inventory_service.flush_low_stock_alerts()
         logger.info("complete_order: order completed", extra={"order_id": order_id})
         return order

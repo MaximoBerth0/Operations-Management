@@ -15,6 +15,7 @@ INVENTORY_PERMISSIONS = [
     "stock:out",
     "stock:adjust",
     "stock:view",
+    "stock:alert",  # receives low-stock alert emails
     # location
     "location:list",
     "location:view",

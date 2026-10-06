@@ -46,6 +46,13 @@ Products soft-delete (`is_active` flag, not a hard delete). Locations have full 
 - **release** — decrements `reserved_quantity`, status → `RELEASED`. On-hand `quantity` untouched.
 - **fulfill** — decrements **both** `quantity` and `reserved_quantity`, status → `FULFILLED`. This is the real outflow.
 
+**Low-stock alerts**: every stock change (initialize, `in` / `out` / `adjust`, reserve / release / fulfill) compares available stock against `reorder_point`.
+
+- When available drops to or below it, `low_stock_alerted_at` is set and the stock id is queued. The alert job is deferred only **after** the commit, so a rolled-back change sends nothing.
+- While the stock stays low, no further alerts are sent. Once available climbs back above `reorder_point`, the column is cleared and the next drop alerts again.
+- `reorder_point = 0` disables alerts for that row.
+- The `low_stock_alert` worker job re-reads the row (skipping it if already recovered) and defers one `send_low_stock_email` job per active user holding the `stock:alert` permission (admin by default).
+
 ## Endpoints
 
 All under the `/inventory` prefix; every route requires a permission. Stock-mutating routes also require auth so `current_user.id` is recorded on the movement.

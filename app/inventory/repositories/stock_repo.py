@@ -19,6 +19,18 @@ class StockRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_stock_with_details(self, stock_id: uuid.UUID) -> InventoryStock | None:
+        stmt = (
+            select(InventoryStock)
+            .where(InventoryStock.id == stock_id)
+            .options(
+                selectinload(InventoryStock.product),
+                selectinload(InventoryStock.location),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def location_has_stock(self, location_id: uuid.UUID) -> bool:
         stmt = select(InventoryStock.id).where(
             InventoryStock.location_id == location_id
