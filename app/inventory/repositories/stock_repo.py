@@ -1,9 +1,11 @@
 import uuid
+from datetime import datetime
 from typing import Optional
 
+from app.inventory.models.enums import StockMovementType
 from app.inventory.models.reservation import StockReservation
 from app.inventory.models.stock import InventoryStock, StockMovement
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -153,6 +155,26 @@ class StockRepository:
 
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_consumption_by_stock(
+        self, since: datetime, location_id: Optional[uuid.UUID] = None
+    ) -> dict[uuid.UUID, int]:
+        """Units that left each stock row since `since` (OUT movements only)."""
+        stmt = (
+            select(StockMovement.stock_id, func.sum(StockMovement.quantity))
+            .where(
+                StockMovement.movement_type == StockMovementType.OUT,
+                StockMovement.created_at >= since,
+            )
+            .group_by(StockMovement.stock_id)
+        )
+        if location_id:
+            stmt = stmt.join(InventoryStock).where(
+                InventoryStock.location_id == location_id
+            )
+
+        result = await self.db.execute(stmt)
+        return {stock_id: int(total) for stock_id, total in result.all()}
 
     async def get_available_stock(self, stock_id: uuid.UUID) -> int | None:
         stmt = select(InventoryStock.quantity - InventoryStock.reserved_quantity).where(

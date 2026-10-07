@@ -20,6 +20,7 @@ STOCK:
   adjust_stock()
   list_stock_movements()
   get_stock_levels()
+  get_replenishment_suggestions()
 
 LOCATION:
   get_location_list()
@@ -34,9 +35,11 @@ RESERVATION:
   fulfill_for_item()
 
 """
+import dataclasses
 import logging
 import uuid
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Protocol
 
 from app.inventory.exceptions import (
@@ -48,6 +51,7 @@ from app.inventory.exceptions import (
     InvalidLocation,
     InvalidProductOrLocation,
     InvalidQuantityStock,
+    InvalidReplenishmentPolicy,
     InvalidReservationStatus,
     LocationAddressIsRequired,
     LocationAlreadyExists,
@@ -68,6 +72,12 @@ from app.inventory.exceptions import (
 from app.inventory.models.enums import ReservationStatus, StockMovementType
 from app.inventory.models.reservation import StockReservation
 from app.inventory.models.stock import InventoryStock, StockMovement
+from app.inventory.replenishment import (
+    ReplenishmentPolicy,
+    ReplenishmentSuggestion,
+    StockSnapshot,
+    evaluate,
+)
 from app.inventory.repositories.category_repo import CategoryRepository
 from app.inventory.repositories.location_repo import LocationRepository
 from app.inventory.repositories.product_repo import ProductRepository
@@ -90,6 +100,12 @@ async def _unsent_low_stock_alert(*, stock_id: uuid.UUID) -> None:
         "low stock alert not delivered, no notifier wired into InventoryService",
         extra={"stock_id": stock_id},
     )
+
+
+@dataclass(frozen=True)
+class StockReplenishment:
+    stock: InventoryStock  # loaded with product and location
+    suggestion: ReplenishmentSuggestion
 
 
 class InventoryService:
@@ -462,6 +478,46 @@ class InventoryService:
         return await self.stock_repo.get_stock_levels(
             location_id=location_id, product_id=product_id
         )
+
+    async def get_replenishment_suggestions(
+        self,
+        location_id: Optional[uuid.UUID] = None,
+        horizon_days: Optional[int] = None,
+        only_needed: bool = True,
+    ) -> list[StockReplenishment]:
+        """Most urgent first: lowest days of coverage, rows with no consumption last."""
+        try:
+            policy = ReplenishmentPolicy()
+            if horizon_days is not None:
+                policy = dataclasses.replace(policy, horizon_days=horizon_days)
+        except ValueError as exc:
+            logger.warning("get_replenishment_suggestions: invalid policy", extra={"horizon_days": horizon_days})
+            raise InvalidReplenishmentPolicy(str(exc)) from exc
+
+        since = datetime.now(timezone.utc) - timedelta(days=policy.window_days)
+        stocks = await self.stock_repo.get_stock_levels(location_id=location_id)
+        consumption = await self.stock_repo.get_consumption_by_stock(since, location_id=location_id)
+
+        results = []
+        for stock in stocks:
+            snapshot = StockSnapshot(
+                quantity=stock.quantity,
+                reserved_quantity=stock.reserved_quantity,
+                reorder_point=stock.reorder_point,
+            )
+            suggestion = evaluate(snapshot, consumption.get(stock.id, 0), policy)
+            if only_needed and not suggestion.needs_restock:
+                continue
+            results.append(StockReplenishment(stock=stock, suggestion=suggestion))
+
+        results.sort(
+            key=lambda r: (
+                r.suggestion.days_of_coverage is None,
+                r.suggestion.days_of_coverage or 0,
+                -r.suggestion.suggested_quantity,
+            )
+        )
+        return results
 
     # location
 

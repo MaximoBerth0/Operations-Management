@@ -46,7 +46,7 @@ The data to answer these is already in the database: `out` movements (consumptio
 app/
 ├── inventory/
 │   ├── replenishment.py        # pure restock math, no DB          [built]
-│   └── service.py              # get_replenishment_suggestions()   [planned]
+│   └── service.py              # get_replenishment_suggestions()   [built]
 │
 ├── assistant/
 │   ├── design.md               # this file
@@ -55,8 +55,9 @@ app/
 │   ├── schemas.py              # ChatRequest, ChatResponse
 │   ├── prompts.py              # system prompt
 │   └── tools/
-│       ├── registry.py         # Tool definition + permission filtering
-│       ├── inventory_tools.py  # thin adapters over InventoryService
+│       ├── base.py             # Tool, ToolContext (split out to avoid an import cycle)  [built]
+│       ├── registry.py         # permission filtering + run_tool()                        [built]
+│       ├── inventory_tools.py  # thin adapters over InventoryService                      [built]
 │       └── order_tools.py      # thin adapters over OrderService
 │
 └── infra/
@@ -208,10 +209,10 @@ The same `get_replenishment_suggestions` can enrich the `low_stock_alert` worker
 
 - [x] `inventory/replenishment.py`: restock math
 - [x] Order completion records `OUT` movements
-- [ ] Unit tests for `replenishment.py`
-- [ ] `InventoryService.get_replenishment_suggestions` (+ consumption query)
+- [x] Unit tests for `replenishment.py`
+- [x] `InventoryService.get_replenishment_suggestions` (+ consumption query)
 - [ ] `infra/llm/client.py`
-- [ ] Tool registry and read-only tools
+- [x] Tool registry and read-only tools
 - [ ] `POST /assistant/chat` with the agent loop
 - [ ] Rate limit policy and logging
 - [ ] Enriched low stock emails

@@ -206,3 +206,10 @@ class InvalidReservationStatus(InventoryError):
             status_code=409,
             error_code="INVALID_RESERVATION_STATUS",
         )
+class InvalidReplenishmentPolicy(InventoryError):
+    def __init__(self, message: str = "Invalid replenishment policy"):
+        super().__init__(
+            message=message,
+            status_code=400,
+            error_code="INVALID_REPLENISHMENT_POLICY",
+        )

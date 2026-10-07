@@ -105,6 +105,7 @@ class StockResponse(ORMModel):
     location_id: uuid.UUID
     product_id: uuid.UUID
     quantity: int
+    reserved_quantity: int
     reorder_point: int
     created_at: datetime
     updated_at: datetime
@@ -129,4 +130,26 @@ class LocationListResponse(ORMModel):
 
 class StockListResponse(ORMModel):
     items: List[StockResponse]
+    total: int
+
+
+class ReplenishmentItemResponse(ORMModel):
+    stock_id: uuid.UUID
+    product_id: uuid.UUID
+    product_name: str
+    sku: str
+    location_id: uuid.UUID
+    location_name: str
+    quantity: int
+    reserved_quantity: int
+    reorder_point: int
+    available: int
+    daily_consumption: float
+    days_of_coverage: float | None
+    needs_restock: bool
+    suggested_quantity: int
+
+
+class ReplenishmentListResponse(ORMModel):
+    items: List[ReplenishmentItemResponse]
     total: int

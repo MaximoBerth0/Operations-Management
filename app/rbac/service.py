@@ -99,6 +99,14 @@ class RBACService:
         await self.role_repo.remove_permission_from_role(role_id, permission_id)
 
     # permission checks
+    async def get_user_permissions(self, user_id: uuid.UUID) -> set[str]:
+        user = await self.role_repo.get_user_with_roles_and_permissions(user_id)
+        if not user:
+            return set()
+        return {
+            permission.code for role in user.roles for permission in role.permissions
+        }
+
     async def ensure_permission(self, user_id: uuid.UUID, permission_code: str) -> None:
         user = await self.role_repo.get_user_with_roles_and_permissions(user_id)
         if not user:
