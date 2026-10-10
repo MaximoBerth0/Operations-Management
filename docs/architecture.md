@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Management API is a single FastAPI application, organized as a set of **feature modules** ([auth](modules/auth.md), [users](modules/users.md), [rbac](modules/rbac.md), [inventory](modules/inventory.md), [orders](modules/orders.md)) over a shared PostgreSQL database, accessed asynchronously via SQLAlchemy + asyncpg. It ships as one container image and runs on AWS ECS Fargate (see [deployment](deployment.md)).
+The Management API is a single FastAPI application, organized as a set of **feature modules** ([auth](modules/auth.md), [users](modules/users.md), [rbac](modules/rbac.md), [inventory](modules/inventory.md), [orders](modules/orders.md), [assistant](modules/assistant.md)) over a shared PostgreSQL database, accessed asynchronously via SQLAlchemy + asyncpg. It ships as one container image and runs on AWS ECS Fargate (see [deployment](deployment.md)).
 
 Cross-cutting concerns live outside the feature modules: configuration, security primitives, and the global error contract in `app/core/`; the async engine and session in `app/database/`; request-id, logging, and health probes in `app/observability/`.
 
@@ -49,6 +49,7 @@ app/
 │   ├── schemas.py       #   Pydantic request/response models
 │   ├── dependencies.py  #   FastAPI DI wiring for this module
 │   └── exceptions.py    #   typed domain errors
+├── assistant/           # LLM agent over the services, read-only tools (see modules/assistant.md)
 │
 ├── core/                # cross-cutting foundations
 │   ├── config.py        #   Settings (pydantic-settings, layered sources)

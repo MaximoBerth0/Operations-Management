@@ -63,6 +63,14 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_OVERRIDES: dict[str, RateLimitOverride] = {}
 
+    # LLM (assistant). The key comes from Secrets Manager in prod.
+    ANTHROPIC_API_KEY: str = ""
+    LLM_MODEL: str = "claude-opus-5-5"
+    LLM_MAX_TOKENS: int = 16000
+    LLM_EFFORT: str = "medium"
+    LLM_TIMEOUT_SECONDS: float = 60.0
+    ASSISTANT_MAX_ITERATIONS: int = 5
+
     # CORS
     CORS_ALLOW_ORIGINS: list[str]
     CORS_ALLOW_CREDENTIALS: bool = True

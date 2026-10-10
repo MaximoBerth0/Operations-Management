@@ -2,7 +2,7 @@
 
 An AI assistant that lets employees ask the back office questions in plain language, starting with the one they ask every morning: **"what should I restock today?"**
 
-This is a design doc. Part of it is already built (see [Status](#status)); the rest is the plan.
+This is a design doc. Part of it is already built (see [Status](#status)); the rest is the plan. The module reference is [docs/modules/assistant.md](../../docs/modules/assistant.md).
 
 ## The problem
 
@@ -50,10 +50,12 @@ app/
 │
 ├── assistant/
 │   ├── design.md               # this file
-│   ├── router.py               # POST /assistant/chat
-│   ├── service.py              # agent loop: message → LLM → tools → answer
-│   ├── schemas.py              # ChatRequest, ChatResponse
-│   ├── prompts.py              # system prompt
+│   ├── router.py               # POST /assistant/chat                                     [built]
+│   ├── service.py              # agent loop: message → LLM → tools → answer               [built]
+│   ├── dependencies.py         # builds AssistantService                                  [built]
+│   ├── schemas.py              # ChatRequest, ChatResponse                                [built]
+│   ├── prompts.py              # system prompt                                            [built]
+│   ├── exceptions.py           # AssistantUnavailable                                     [built]
 │   └── tools/
 │       ├── base.py             # Tool, ToolContext (split out to avoid an import cycle)  [built]
 │       ├── registry.py         # permission filtering + run_tool()                        [built]
@@ -62,7 +64,7 @@ app/
 │
 └── infra/
     └── llm/
-        └── client.py           # LLM client wrapper, same idea as mailer.py
+        └── client.py           # LLM client wrapper, same idea as mailer.py   [built]
 ```
 
 Why two places? The restock calculation is **inventory domain logic**: a REST endpoint or the worker can use it too, not only the agent. The tools are **adapters**: they turn the JSON the model sends into a service call and return the result. They're closer to routers than to services.
@@ -211,9 +213,10 @@ The same `get_replenishment_suggestions` can enrich the `low_stock_alert` worker
 - [x] Order completion records `OUT` movements
 - [x] Unit tests for `replenishment.py`
 - [x] `InventoryService.get_replenishment_suggestions` (+ consumption query)
-- [ ] `infra/llm/client.py`
+- [x] `infra/llm/client.py`
 - [x] Tool registry and read-only tools
-- [ ] `POST /assistant/chat` with the agent loop
-- [ ] Rate limit policy and logging
+- [x] `POST /assistant/chat` with the agent loop
+- [x] Rate limit policy and logging
+- [ ] Tests for the agent loop (mocked LLM) and evals
 - [ ] Enriched low stock emails
 - [ ] Write tools with confirmation

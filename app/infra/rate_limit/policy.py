@@ -26,6 +26,8 @@ _DEFAULTS: dict[str, tuple[int, float]] = {
     "register": (5, 0.1),
     "password_reset": (3, 0.05),
     "token_refresh": (30, 1.0),
+    # every request costs money: burst of 10, then one every 30s per user
+    "assistant": (10, 1 / 30),
     "default": (120, 20.0),
 }
 

@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.assistant.router import router as assistant_router
 from app.auth.routers import router as auth_router
 from app.common.handlers import register_exception_handlers
 from app.infra.config import settings
@@ -56,3 +57,4 @@ app.include_router(auth_router)
 app.include_router(rbac_router)
 app.include_router(inventory_router)
 app.include_router(order_router)
+app.include_router(assistant_router)

@@ -28,6 +28,7 @@ makefile = "^1.1.0"
 redis = "^8.1.0"
 procrastinate = "^3.9.0"
 psycopg = {extras = ["binary", "pool"], version = "^3.3.6"}
+anthropic = "^1.13.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

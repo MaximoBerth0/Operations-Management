@@ -89,7 +89,7 @@ For more technical details you can review the documentation under [`docs/`](docs
 - [Database design](docs/database_design.md) — pooling, timeouts, and other technical decisions
 - [Deployment](docs/deployment.md) — the AWS stack (ECS, RDS, Secrets Manager, DNS)
 - [Testing](docs/testing.md) — the integration suite and its Docker test database
-- Per-module docs — [auth](docs/modules/auth.md) · [users](docs/modules/users.md) · [rbac](docs/modules/rbac.md) · [inventory](docs/modules/inventory.md) · [orders](docs/modules/orders.md)
+- Per-module docs — [auth](docs/modules/auth.md) · [users](docs/modules/users.md) · [rbac](docs/modules/rbac.md) · [inventory](docs/modules/inventory.md) · [orders](docs/modules/orders.md) · [assistant](docs/modules/assistant.md)
 
 ---
 
