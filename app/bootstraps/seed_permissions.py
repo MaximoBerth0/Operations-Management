@@ -1,3 +1,4 @@
+from app.common.constants.assistant_permissions import ASSISTANT_PERMISSIONS
 from app.common.constants.inventory_permissions import INVENTORY_PERMISSIONS
 from app.common.constants.order_permissions import ORDER_PERMISSIONS
 from app.common.constants.system_permissions import SYSTEM_PERMISSIONS
@@ -7,7 +8,11 @@ from app.rbac.models.permission import Permission
 from app.rbac.repositories.permission_repo import PermissionRepository
 
 ALL_PERMISSIONS = set(
-    SYSTEM_PERMISSIONS + INVENTORY_PERMISSIONS + USER_PERMISSIONS + ORDER_PERMISSIONS
+    SYSTEM_PERMISSIONS
+    + INVENTORY_PERMISSIONS
+    + USER_PERMISSIONS
+    + ORDER_PERMISSIONS
+    + ASSISTANT_PERMISSIONS
 )
 
 

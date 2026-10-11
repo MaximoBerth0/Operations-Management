@@ -15,6 +15,7 @@ from app.auth.dependencies import get_current_user
 from app.infra.rate_limit.dependencies import rate_limit
 from app.inventory.dependencies import get_current_location
 from app.inventory.models.location import Location
+from app.rbac.dependencies import require_permission
 from app.users.model import User
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,10 @@ router = APIRouter(prefix="/assistant", tags=["ASSISTANT"])
 @router.post(
     "/chat",
     response_model=ChatResponse,
-    dependencies=[rate_limit("assistant")],
+    dependencies=[
+        Depends(require_permission("assistant:use")),
+        rate_limit("assistant"),
+    ],
 )
 async def chat(
     body: ChatRequest,

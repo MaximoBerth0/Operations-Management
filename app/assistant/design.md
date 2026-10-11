@@ -18,7 +18,7 @@ The data to answer these is already in the database: `out` movements (consumptio
 
 1. **The math is deterministic, the LLM explains it.** The model never computes how much to restock. A plain, tested Python function does, and the model calls it as a tool and writes the answer. Knowing where *not* to use an LLM is part of the design.
 2. **The agent is just another interface over the service layer**, like the REST API. Tools call services, never repositories, so they inherit the validation and locking that's already there.
-3. **Permissions are the same permissions.** A tool declares the permission it needs, exactly like a route does with `require_permission(...)`. A user only gets the tools their role allows.
+3. **Permissions are the same permissions.** The endpoint itself needs `assistant:use` (`employee` and `admin`), so a self-registered user without a role can't spend LLM tokens. Then each tool declares the permission it needs, exactly like a route does with `require_permission(...)`, and a user only gets the tools their role allows.
 4. **Read-only first.** Writes (receiving stock, creating orders) come later and always go through human confirmation.
 5. **Dependencies point one way.** `assistant` depends on `inventory` and `orders`, never the other way around. Inventory doesn't know an LLM exists.
 
@@ -217,6 +217,7 @@ The same `get_replenishment_suggestions` can enrich the `low_stock_alert` worker
 - [x] Tool registry and read-only tools
 - [x] `POST /assistant/chat` with the agent loop
 - [x] Rate limit policy and logging
+- [x] `assistant:use` permission on the endpoint
 - [ ] Tests for the agent loop (mocked LLM) and evals
 - [ ] Enriched low stock emails
 - [ ] Write tools with confirmation

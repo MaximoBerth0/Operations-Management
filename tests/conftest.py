@@ -47,6 +47,7 @@ import app.rbac.models.user_role
 import app.users.model
 import pytest
 import pytest_asyncio
+from app.common.constants.assistant_permissions import ASSISTANT_PERMISSIONS
 from app.common.constants.inventory_permissions import INVENTORY_PERMISSIONS
 from app.common.constants.order_permissions import ORDER_PERMISSIONS
 from app.common.constants.system_permissions import SYSTEM_PERMISSIONS
@@ -114,7 +115,13 @@ async def db_session():
 @pytest_asyncio.fixture
 async def seeded(db_session):
     all_codes = list(
-        set(SYSTEM_PERMISSIONS + INVENTORY_PERMISSIONS + USER_PERMISSIONS + ORDER_PERMISSIONS)
+        set(
+            SYSTEM_PERMISSIONS
+            + INVENTORY_PERMISSIONS
+            + USER_PERMISSIONS
+            + ORDER_PERMISSIONS
+            + ASSISTANT_PERMISSIONS
+        )
     )
 
     # insert all permissions

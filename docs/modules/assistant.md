@@ -9,7 +9,7 @@ Lets employees ask the back office questions in plain language ("what should I r
 ## Architecture
 
 ```
- employee ──▶ POST /assistant/chat   (auth, X-Location-Id, rate limit "assistant")
+ employee ──▶ POST /assistant/chat   (assistant:use, X-Location-Id, rate limit "assistant")
                    │
                    ▼
            ┌────────────────┐  tools_for(permissions)  ┌──────────────┐
@@ -71,9 +71,9 @@ Adding a tool: write the args schema, a handler that only calls a service, a `To
 
 | Endpoint | Auth |
 |---|---|
-| `POST /assistant/chat` | logged-in user + `X-Location-Id` header; tools filtered by the user's permissions |
+| `POST /assistant/chat` | `assistant:use` + `X-Location-Id` header; tools filtered by the user's permissions |
 
-There's no dedicated permission for the endpoint itself: a user without any of the tool permissions can still chat, but the model gets no tools and can only say it has no data.
+Two layers of permissions: `assistant:use` decides who can reach the endpoint at all (`employee` and `admin`; `client` and users without a role get 403 before any LLM call, since every request costs tokens), and the tool permissions decide what the model can see once inside.
 
 Request:
 
@@ -120,6 +120,7 @@ The client is built on first use, so the app starts without a key. Without one, 
 | Exception | HTTP | Code | When |
 |---|---|---|---|
 | `AssistantUnavailable` | 503 | `ASSISTANT_UNAVAILABLE` | LLM API error, timeout, network failure, or no API key configured |
+| (permission) | 403 | | missing `assistant:use` |
 | (validation) | 422 | | bad `messages` (empty, too long, not starting and ending with `user`) |
 | (location) | 400 / 404 | | missing `X-Location-Id` / unknown location |
 | (rate limit) | 429 | `RATE_LIMITED` | `assistant` bucket empty |
