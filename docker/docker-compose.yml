@@ -4,7 +4,9 @@
 #
 # There is no committed .env — values below are self-contained local defaults.
 # A personal docker/.env (gitignored) is loaded if present and overrides them.
-# Production gets its configuration from AWS Secrets Manager, not this file.
+# Production (AWS) uses docker-compose-prod.yml with config from Secrets Manager.
+name: management
+
 services:
   api:
     build:
@@ -21,6 +23,7 @@ services:
       AWS_REGION: us-east-1
       SENDER_EMAIL: no-reply@example.com
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/management
+      DB_SSL: disable
       SECRET_KEY: local-dev-secret-key-not-for-production-use-only
       CORS_ALLOW_ORIGINS: '["*"]'
     env_file:

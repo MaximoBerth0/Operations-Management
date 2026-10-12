@@ -193,14 +193,14 @@ you must start the test database with Docker before running them.
 docker compose -f docker/docker-compose-test.yml up -d test-db
 
 # 2. run the integration suite
-pytest integration/ -v
+pytest tests/ -v
 
 # 3. tear the test database down
 docker compose -f docker/docker-compose-test.yml down
 ```
 
-The suite in [`integration/`](integration/) sets its own test environment
+The suite in [`tests/`](tests/) sets its own test environment
 variables and builds the schema from the ORM metadata (see
-[`integration/conftest.py`](integration/conftest.py)), pointing at the
-`test-db` container on `localhost:5432`. Make sure that port is free before
+[`tests/conftest.py`](tests/conftest.py)), pointing at the
+`test-db` container on `localhost:5433`. Make sure that port is free before
 starting it.

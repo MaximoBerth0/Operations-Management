@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.security.passwords import hash_password
@@ -21,12 +22,20 @@ class UserService:
         if existing:
             logger.warning("user registration failed", extra={"email": email})
             raise UserAlreadyExists("User with this email already exists")
+        if await self.repo.get_by_username(username):
+            logger.warning("user registration failed", extra={"username": username})
+            raise UserAlreadyExists("User with this username already exists")
         user = User(
             email=email,
             username=username,
             hashed_password=hash_password(password),
         )
-        await self.repo.create_user(user)
+        try:
+            await self.repo.create_user(user)
+        except IntegrityError:
+            # concurrent registration won the race on the unique index
+            await self.session.rollback()
+            raise UserAlreadyExists()
         logger.info("registered user", extra={"user_id": str(user.id), "email": email})
         return user
     
@@ -49,7 +58,11 @@ class UserService:
             logger.warning("update_profile: all fields were forbidden", extra={"user_id": str(current_user.id), "attempted_fields": list(data.keys())})
             return current_user
 
-        updated_user = await self.repo.update_profile(user=current_user, data=safe_data)
+        try:
+            updated_user = await self.repo.update_profile(user=current_user, data=safe_data)
+        except IntegrityError:
+            await self.session.rollback()
+            raise UserAlreadyExists("Email or username already in use")
         logger.info("user profile updated", extra={"user_id": str(current_user.id), "updated_fields": list(safe_data.keys())})
         return updated_user
         

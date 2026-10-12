@@ -25,7 +25,7 @@ engine: AsyncEngine = create_async_engine(
     connect_args={
         "timeout": settings.DB_CONNECT_TIMEOUT,  # connection timeout
         "command_timeout": settings.DB_COMMAND_TIMEOUT,  # query timeout
-        "ssl": "require",                         
+        "ssl": settings.DB_SSL,
         "server_settings": {
             "statement_timeout": str(
                 settings.DB_STATEMENT_TIMEOUT

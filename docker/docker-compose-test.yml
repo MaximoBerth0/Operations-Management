@@ -1,3 +1,7 @@
+# Own project name so it never shares a network with docker-compose.yml,
+# and port 5433 so it can run alongside the dev database.
+name: management-test
+
 services:
   test-db:
     image: postgres:16
@@ -6,7 +10,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: test_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   test-redis:
     image: redis:7-alpine

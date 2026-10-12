@@ -1,6 +1,6 @@
 """
 docker compose -f docker-compose-test.yml up -d test-db
-pytest integration/ -v
+pytest tests/ -v
 docker compose -f docker-compose-test.yml down test-db
 """
 
@@ -12,12 +12,13 @@ from datetime import datetime, timezone
 os.environ["ENV"] = "test"
 os.environ["DEBUG"] = "true"
 # TEST_DATABASE_URL lets you point the suite at a test DB on another port/host
-# (e.g. when 5432 is already taken); it must never point at a real database —
+# (e.g. when 5433 is already taken); it must never point at a real database —
 # db_session drops every table at the end of each test.
 os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://user:password@localhost:5432/test_db",
+    "postgresql+asyncpg://user:password@localhost:5433/test_db",
 )
+os.environ["DB_SSL"] = "disable"
 os.environ["SECRET_KEY"] = "test-secret-key-at-least-32-characters-long"
 os.environ["JWT_ALGORITHM"] = "HS256"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "15"

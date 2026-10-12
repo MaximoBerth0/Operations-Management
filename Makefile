@@ -2,7 +2,7 @@
 LOCAL_DATABASE_URL := postgresql+asyncpg://postgres:postgres@localhost:5432/management
 
 # Run alembic with the local URL injected.
-ALEMBIC := DATABASE_URL=$(LOCAL_DATABASE_URL) alembic
+ALEMBIC := DATABASE_URL=$(LOCAL_DATABASE_URL) DB_SSL=disable alembic
 
 # Run procrastinate with the local URL injected.
 PROCRASTINATE := DATABASE_URL=$(LOCAL_DATABASE_URL) python -m procrastinate --app=app.worker.app.app

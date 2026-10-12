@@ -4,23 +4,23 @@
 
 The suite is **integration-first**: tests drive the real FastAPI app through an in-process HTTP client and assert against a **real PostgreSQL database** — no mocked repositories, no SQLite substitute. This exercises the full `router → service → repository → model` stack, real SQL (including Postgres-specific behavior like `FOR UPDATE` row locks and enum types), and the actual auth/RBAC dependencies on every request.
 
-Because the tests hit a real database, **you must start a throwaway PostgreSQL container before running them**. Tests point at `localhost:5432`; nothing creates that database for you.
+Because the tests hit a real database, **you must start a throwaway PostgreSQL container before running them**. Tests point at `localhost:5433`; nothing creates that database for you.
 
-Tests live under [`integration/`](../integration/), grouped by module, with all wiring in [`integration/conftest.py`](../integration/conftest.py).
+Tests live under [`tests/`](../tests/), grouped by module, with all wiring in [`tests/conftest.py`](../tests/conftest.py).
 
 ## You need a Docker database
 
 The tests connect to a disposable Postgres instance defined in [`docker/docker-compose-test.yml`](../docker/docker-compose-test.yml):
 
-- image `postgres:16`, database `test_db`, user/password `user` / `password`, published on host port **5432**.
+- image `postgres:16`, database `test_db`, user/password `user` / `password`, published on host port **5433**.
 
 The connection string is fixed in `conftest.py`:
 
 ```
-postgresql+asyncpg://user:password@localhost:5432/test_db
+postgresql+asyncpg://user:password@localhost:5433/test_db
 ```
 
-So the container must be up **before** pytest starts, and host port 5432 must be free. This is intentional — the suite validates behavior against the same engine that runs in production, not an approximation.
+So the container must be up **before** pytest starts, and host port 5433 must be free. This is intentional — the suite validates behavior against the same engine that runs in production, not an approximation.
 
 ## Running the tests
 
@@ -29,15 +29,15 @@ So the container must be up **before** pytest starts, and host port 5432 must be
 docker compose -f docker/docker-compose-test.yml up -d test-db
 
 # 2. run the integration suite
-pytest integration/ -v
+pytest tests/ -v
 
 # 3. tear the database down when done
 docker compose -f docker/docker-compose-test.yml down
 ```
 
-Run a subset by path or keyword as usual, e.g. `pytest integration/inventory -v` or `pytest integration/ -k stock`.
+Run a subset by path or keyword as usual, e.g. `pytest tests/inventory -v` or `pytest tests/ -k stock`.
 
-`pytest.ini` sets `asyncio_mode = auto` (async tests need no `@pytest.mark.asyncio`) and `pythonpath = .` so `app` and `integration` import cleanly.
+`pytest.ini` sets `asyncio_mode = auto` (async tests need no `@pytest.mark.asyncio`) and `pythonpath = .` so `app` and `tests` import cleanly.
 
 ## How the harness works
 
@@ -59,7 +59,7 @@ Run a subset by path or keyword as usual, e.g. `pytest integration/inventory -v`
 ## Test layout
 
 ```
-integration/
+tests/
 ├── conftest.py          # env setup, engine, fixtures, entity builders
 ├── auth/                # login, refresh, logout, password reset/change
 ├── user/                # registration, profile, enable/disable

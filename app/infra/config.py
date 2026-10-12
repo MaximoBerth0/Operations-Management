@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     DB_POOL_RECYCLE: int = 3600
     DB_POOL_PRE_PING: bool = True
     DB_ECHO: bool = False
+    # asyncpg ssl mode: require in prod (RDS), disable for local docker postgres
+    DB_SSL: str = "require"
 
     # Connection Timeouts
     DB_CONNECT_TIMEOUT: int = 10

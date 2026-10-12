@@ -27,6 +27,7 @@ Thumbs.db
 # Tools 
 .ruff_cache
 .pytest_cache
+.schemathesis/
 
 # Deployment
 *.resolved.json
