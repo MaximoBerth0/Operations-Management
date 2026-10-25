@@ -149,3 +149,20 @@ async def test_user_permissions(db_session, admin_user, plain_user):
 
     assert ALL_PERMISSIONS <= await rbac.get_user_permissions(admin_user.id)
     assert await rbac.get_user_permissions(plain_user.id) == set()
+
+
+async def test_stock_levels_respects_limit(
+    admin_user, make_category, make_product, make_location, make_stock, make_ctx
+):
+    location_id = await make_location(admin_user)
+    category_id = await make_category(admin_user)
+    for sku in ("SKU-1", "SKU-2"):
+        product_id = await make_product(admin_user, sku=sku, category_id=category_id)
+        await make_stock(admin_user, product_id=product_id, location_id=location_id)
+
+    result = await run_tool(
+        "get_stock_levels", {"limit": 1}, make_ctx(admin_user.id, uuid.UUID(location_id)), ALL_PERMISSIONS
+    )
+
+    assert len(result.content["items"]) == 1
+    assert result.content["total"] == 2

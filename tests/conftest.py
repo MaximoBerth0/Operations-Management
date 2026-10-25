@@ -410,3 +410,26 @@ def make_order_item(client, auth_headers, make_order, make_product):
             "quantity": quantity,
         }
     return _make
+
+# redis_enabled
+# Real Redis (docker-compose-test.yml), flushed before and after each test.
+
+TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/0")
+
+
+@pytest_asyncio.fixture
+async def redis_enabled(monkeypatch):
+    from app.infra.config import settings
+    from app.infra.redis import client as redis_client_module
+
+    monkeypatch.setattr(settings, "REDIS_URL", TEST_REDIS_URL)
+    monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", True)
+
+    await redis_client_module.startup()
+    client = redis_client_module.get_client()
+    await client.flushdb()
+
+    yield client
+
+    await client.flushdb()
+    await redis_client_module.shutdown()

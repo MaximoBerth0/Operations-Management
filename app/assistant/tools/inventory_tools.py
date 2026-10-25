@@ -15,6 +15,7 @@ from app.inventory.schemas import (
 )
 
 LOCATION_HINT = "Location id. Omit to use the user's current location."
+LIMIT_HINT = "Max rows returned. total still counts every row."
 
 
 # get_replenishment_suggestions
@@ -24,6 +25,7 @@ class ReplenishmentArgs(BaseModel):
     horizon_days: int | None = Field(
         None, ge=1, le=30, description="Restock if stock runs out within this many days. Default 7."
     )
+    limit: int = Field(50, ge=1, le=200, description=LIMIT_HINT)
 
 
 async def get_replenishment(args: ReplenishmentArgs, ctx: ToolContext) -> ReplenishmentListResponse:
@@ -47,16 +49,17 @@ async def get_replenishment(args: ReplenishmentArgs, ctx: ToolContext) -> Replen
             needs_restock=r.suggestion.needs_restock,
             suggested_quantity=r.suggestion.suggested_quantity,
         )
-        for r in rows
+        for r in rows[: args.limit]
     ]
-    return ReplenishmentListResponse(items=items, total=len(items))
+    return ReplenishmentListResponse(items=items, total=len(rows))
 
 
 GET_REPLENISHMENT = Tool(
     name="get_replenishment_suggestions",
     description=(
         "Products that should be restocked at a location, most urgent first, "
-        "with daily consumption, days of coverage and suggested quantity."
+        "with daily consumption, days of coverage and suggested quantity. "
+        "If total is above the items returned, the list was cut by limit."
     ),
     input_schema=ReplenishmentArgs,
     permission="stock:view",
@@ -69,18 +72,22 @@ GET_REPLENISHMENT = Tool(
 class StockLevelsArgs(BaseModel):
     location_id: uuid.UUID | None = Field(None, description=LOCATION_HINT)
     product_id: uuid.UUID | None = Field(None, description="Only this product.")
+    limit: int = Field(50, ge=1, le=200, description=LIMIT_HINT)
 
 
 async def get_stock_levels(args: StockLevelsArgs, ctx: ToolContext) -> StockListResponse:
     stocks = await ctx.inventory_service.get_stock_levels(
         location_id=args.location_id or ctx.location_id, product_id=args.product_id
     )
-    return StockListResponse(items=stocks, total=len(stocks))
+    return StockListResponse(items=stocks[: args.limit], total=len(stocks))
 
 
 GET_STOCK_LEVELS = Tool(
     name="get_stock_levels",
-    description="Current quantity, reserved quantity and reorder point of each product at a location.",
+    description=(
+        "Current quantity, reserved quantity and reorder point of each product at a location. "
+        "If total is above the items returned, the list was cut by limit: filter by product_id."
+    ),
     input_schema=StockLevelsArgs,
     permission="stock:view",
     handler=get_stock_levels,

@@ -68,10 +68,14 @@ class Settings(BaseSettings):
     # LLM (assistant). The key comes from Secrets Manager in prod.
     ANTHROPIC_API_KEY: str = ""
     LLM_MODEL: str = "claude-opus-5-5"
-    LLM_MAX_TOKENS: int = 16000
+    LLM_MAX_TOKENS: int = 8000
     LLM_EFFORT: str = "medium"
-    LLM_TIMEOUT_SECONDS: float = 60.0
+    LLM_TIMEOUT_SECONDS: float = 25.0
     ASSISTANT_MAX_ITERATIONS: int = 5
+    ASSISTANT_DEADLINE_SECONDS: float = 50.0
+    # cost units = uncached input tokens (cache reads 0.05, writes 1.25, output 5)
+    ASSISTANT_MAX_COST_PER_REQUEST: int = 200_000
+    ASSISTANT_DAILY_COST_PER_USER: int = 2_500_000
 
     # CORS
     CORS_ALLOW_ORIGINS: list[str]

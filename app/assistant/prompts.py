@@ -22,6 +22,10 @@ MAX_ITERATIONS_ANSWER = (
     "I couldn't finish answering that. Try asking a more specific question."
 )
 
+TRUNCATED_ANSWER = (
+    "That answer got too long. Try asking about fewer products at a time."
+)
+
 REFUSAL_ANSWER = "I can't help with that request."
 
 EMPTY_ANSWER = "I don't have an answer for that."

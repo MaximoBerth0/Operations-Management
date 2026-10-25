@@ -30,8 +30,10 @@ class ToolCall:
 
 @dataclass(frozen=True)
 class LLMUsage:
-    input_tokens: int = 0
+    input_tokens: int = 0  # uncached input only
     output_tokens: int = 0
+    cache_read_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
 
 
 @dataclass(frozen=True)
@@ -73,7 +75,10 @@ class LLMClient:
             response = await self._client.beta.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
-                system=system,
+                # tools render before system, so this marker caches both;
+                # the top-level one caches the growing conversation
+                system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+                cache_control={"type": "ephemeral"},
                 messages=messages,  # type: ignore[arg-type]
                 output_config={"effort": self.effort},  # type: ignore[typeddict-item]
                 betas=[_FALLBACK_BETA],
@@ -112,6 +117,8 @@ class LLMClient:
             usage=LLMUsage(
                 input_tokens=response.usage.input_tokens,
                 output_tokens=response.usage.output_tokens,
+                cache_read_input_tokens=response.usage.cache_read_input_tokens or 0,
+                cache_creation_input_tokens=response.usage.cache_creation_input_tokens or 0,
             ),
         )
 
