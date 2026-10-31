@@ -59,7 +59,7 @@ app/
 │   └── global_errors.py #   AppError base + error contract
 │
 ├── database/            # async engine, session factory, lifecycle hooks
-├── observability/       # request-id middleware, logging setup, health probes
+├── observability/       # request-id middleware, logging, Sentry, health probes
 ├── mail/                # SES-backed mailer
 └── bootstraps/          # one-off seeders (permissions, roles)
 

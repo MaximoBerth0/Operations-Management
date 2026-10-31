@@ -12,6 +12,10 @@ importable from there.
 import procrastinate
 
 from app.infra.config import settings
+from app.observability.sentry import setup_sentry
+from app.worker.middleware import job_context_middleware
+
+setup_sentry("worker")
 
 
 def _conninfo() -> str:
@@ -26,4 +30,5 @@ app = procrastinate.App(
         "app.worker.tasks.email",
         "app.worker.tasks.stock_alert",
     ],
+    worker_defaults={"worker_middleware": [job_context_middleware]},
 )

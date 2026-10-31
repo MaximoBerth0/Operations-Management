@@ -55,5 +55,6 @@ Settings precedence (highest first): **explicit env vars → Secrets Manager bun
 
 ## Observability
 
-- **Logs** — gunicorn access/error logs stream to stdout and are shipped to **CloudWatch Logs** (`/ecs/management-api`). Each request carries a request id (see `app/observability/`).
+- **Logs** — gunicorn access/error logs stream to stdout and are shipped to **CloudWatch Logs** (`/ecs/management-api`). Each request carries a request id (see `app/observability/`), and `Request finished` logs its `duration_ms`.
+- **Errors and traces**: Sentry, on when `SENTRY_DSN` is in the secret bundle. The API and the worker report as `component: api` / `component: worker`, with `release` set to the image's `GIT_SHA` (pass `--build-arg GIT_SHA=$(git rev-parse HEAD)`). `SENTRY_TRACES_SAMPLE_RATE` (default 0.1) sets the share of requests and jobs traced. Every event carries the `request_id` tag (or `job-<id>` in the worker) to find its log lines in CloudWatch. A job that fails and will be retried is not reported, only its last attempt. PII is off: no task arguments, no LLM prompts.
 - **Health** — the container-level `HEALTHCHECK` and the ECS/ALB health checks both probe `/health`.

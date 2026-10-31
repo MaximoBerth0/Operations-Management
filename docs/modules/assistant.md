@@ -129,6 +129,7 @@ The client is built on first use, so the app starts without a key. Without one, 
 - **Rate limit:** policy `assistant` in the Redis token bucket, per user: burst of 10, then one request every 30 seconds. Tunable in prod through `RATE_LIMIT_OVERRIDES` like any other policy.
 - **Daily quota:** key `assistant:usage:{user_id}:{YYYY-MM-DD}` (UTC), incremented by the request's cost units after each chat, expires after 48h. Checked before the call and charged after, so a user can go over by at most one request, which `ASSISTANT_MAX_COST_PER_REQUEST` bounds. Fails open like the rate limit: with Redis off or down, nothing is checked or charged.
 - **Logging:** each chat logs `assistant chat finished` with `user_id`, `location_id`, `tools_called`, `iterations`, `stop_reason`, `input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens` and `cost_units`, tagged with the request id. Hitting the iteration limit, the request budget, `max_tokens`, the deadline or the daily quota logs a warning. LLM failures log the HTTP status and the Anthropic request id.
+- **Tracing:** each LLM call is a Sentry `gen_ai.chat` span with the model, token counts and stop reason, never the prompt. It is set by hand in [client.py](../../app/infra/llm/client.py), Sentry's Anthropic integration does not cover `beta.messages`.
 
 ## Error cases
 

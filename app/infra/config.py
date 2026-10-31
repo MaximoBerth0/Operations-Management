@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     AWS_SECRETS_NAME: str | None = None
     SENDER_EMAIL: str
     APP_BASE_URL: str
+    GIT_SHA: str = "unknown"
+
+    # Sentry, off without a DSN
+    SENTRY_DSN: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.1, ge=0, le=1)
 
     # Database (Postgres)
     DATABASE_URL: str

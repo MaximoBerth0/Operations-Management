@@ -28,7 +28,7 @@ A back-office API for a business: you have products sitting in locations, people
 | `rbac` | roles, permissions, who has which role | `/rbac` |
 | `inventory` | products, categories, locations, stock and movements | `/inventory` |
 | `orders` | create orders, add items, confirm/cancel/complete | `/orders` |
-| `observability` | health checks, request ids, logging | `/health` |
+| `observability` | health checks, request ids, logging, Sentry | `/health` |
 | `worker` | background jobs (emails, low stock alerts) | n/a |
 | `infra` | config, DB session, Redis, mailer, JWT/passwords, rate limit | n/a |
 

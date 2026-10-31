@@ -14,11 +14,13 @@ from app.inventory.router import router as inventory_router
 from app.observability.health import router as health_router
 from app.observability.logging import setup_logging
 from app.observability.request_id import RequestIdMiddleware
+from app.observability.sentry import setup_sentry
 from app.orders.router import router as order_router
 from app.rbac.routers import router as rbac_router
 from app.users.router import router as users_router
 
 setup_logging()
+setup_sentry("api")
 logger = logging.getLogger(__name__)
 
 

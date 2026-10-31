@@ -1,7 +1,8 @@
 # AWS only. Mirrors deploy/ecs-task-definition.json for running the image on an
 # AWS host (EC2 or similar) whose IAM role can read the secret and send via SES.
 # Run from the repo root with:
-#   AWS_REGION=us-east-1 docker compose -f docker/docker-compose-prod.yml up -d --build
+#   AWS_REGION=us-east-1 GIT_SHA=$(git rev-parse HEAD) \
+#     docker compose -f docker/docker-compose-prod.yml up -d --build
 #
 # No database here: DATABASE_URL (RDS) and every other value come from the
 # Secrets Manager bundle named by AWS_SECRETS_NAME. Nothing is read from .env.
@@ -10,6 +11,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
     image: management-api:latest
     container_name: management_api
     restart: unless-stopped

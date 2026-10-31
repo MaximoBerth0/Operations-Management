@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import anthropic
-
+import sentry_sdk
 from app.infra.config import settings
 
 logger = logging.getLogger(__name__)
@@ -71,8 +71,42 @@ class LLMClient:
         if tools:
             kwargs["tools"] = tools
 
+        # by hand: Sentry's Anthropic integration skips beta.messages. No prompts
+        with sentry_sdk.start_span(op="gen_ai.chat", name=f"chat {self.model}") as span:
+            span.set_data("gen_ai.request.model", self.model)
+            response = await self._call(system, messages, kwargs)
+            usage = response.usage
+            span.set_data("gen_ai.response.model", response.model)
+            span.set_data("gen_ai.usage.input_tokens", usage.input_tokens)
+            span.set_data("gen_ai.usage.output_tokens", usage.output_tokens)
+            span.set_data("gen_ai.usage.input_tokens.cached", usage.cache_read_input_tokens or 0)
+            span.set_data("gen_ai.response.finish_reasons", response.stop_reason)
+
+        text = "".join(b.text for b in response.content if b.type == "text")
+        tool_calls = [
+            ToolCall(id=b.id, name=b.name, input=dict(b.input))  # type: ignore[union-attr]
+            for b in response.content
+            if b.type == "tool_use"
+        ]
+
+        return LLMResponse(
+            stop_reason=response.stop_reason,
+            text=text.strip(),
+            tool_calls=tool_calls,
+            content=list(response.content),
+            usage=LLMUsage(
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+                cache_read_input_tokens=response.usage.cache_read_input_tokens or 0,
+                cache_creation_input_tokens=response.usage.cache_creation_input_tokens or 0,
+            ),
+        )
+
+    async def _call(
+        self, system: str, messages: list[dict[str, Any]], kwargs: dict[str, Any]
+    ) -> Any:
         try:
-            response = await self._client.beta.messages.create(
+            return await self._client.beta.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 # tools render before system, so this marker caches both;
@@ -101,26 +135,6 @@ class LLMClient:
                 extra={"exception": type(exc).__name__},
             )
             raise LLMError("LLM unreachable") from exc
-
-        text = "".join(b.text for b in response.content if b.type == "text")
-        tool_calls = [
-            ToolCall(id=b.id, name=b.name, input=dict(b.input))  # type: ignore[union-attr]
-            for b in response.content
-            if b.type == "tool_use"
-        ]
-
-        return LLMResponse(
-            stop_reason=response.stop_reason,
-            text=text.strip(),
-            tool_calls=tool_calls,
-            content=list(response.content),
-            usage=LLMUsage(
-                input_tokens=response.usage.input_tokens,
-                output_tokens=response.usage.output_tokens,
-                cache_read_input_tokens=response.usage.cache_read_input_tokens or 0,
-                cache_creation_input_tokens=response.usage.cache_creation_input_tokens or 0,
-            ),
-        )
 
 
 _client: LLMClient | None = None

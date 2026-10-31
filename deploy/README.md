@@ -37,9 +37,11 @@ Internet ──► ALB (HTTPS :443)
     "SENDER_EMAIL": "no-reply@yourdomain.com",
     "APP_BASE_URL": "https://api.yourdomain.com",
     "CORS_ALLOW_ORIGINS": ["https://app.yourdomain.com"],
-    "DEBUG": false
+    "DEBUG": false,
+    "SENTRY_DSN": "https://<key>@<org>.ingest.sentry.io/<project>"
   }
   ```
+  `SENTRY_DSN` is optional: without it error reporting stays off.
 - Two IAM roles:
   - **execution role** — `AmazonECSTaskExecutionRolePolicy` (lets ECS pull the
     image from ECR and write logs to CloudWatch)
@@ -57,7 +59,8 @@ REPO=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/management-api
 aws ecr get-login-password --region $AWS_REGION \
   | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-docker build -f docker/Dockerfile -t management-api:latest .
+docker build -f docker/Dockerfile --build-arg GIT_SHA=$(git rev-parse HEAD) \
+  -t management-api:latest .
 docker tag management-api:latest $REPO:latest
 docker push $REPO:latest
 ```

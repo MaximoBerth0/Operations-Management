@@ -33,6 +33,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH" \
     GUNICORN_WORKERS=4
 
+# Sentry release
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends tini \

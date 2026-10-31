@@ -29,6 +29,7 @@ redis = "^8.1.0"
 procrastinate = "^3.9.0"
 psycopg = {extras = ["binary", "pool"], version = "^3.3.6"}
 anthropic = "^1.13.0"
+sentry-sdk = {version = "^2.73.0", extras = ["fastapi"]}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
