@@ -155,13 +155,24 @@ TOOL = Tool(
 
 | Tool | Calls | Permission |
 |---|---|---|
+| `search_products` | `InventoryService.search_products` | `product:view` |
 | `get_replenishment_suggestions` | `InventoryService.get_replenishment_suggestions` | `stock:view` |
 | `get_stock_levels` | `InventoryService.get_stock_levels` | `stock:view` |
-| `list_stock_movements` | `InventoryService.list_stock_movements` | `stock:view` |
+| `list_stock_movements` | `InventoryService.get_stock_history` | `stock:view` |
 | `list_locations` | `InventoryService.get_location_list` | `location:list` |
 | `get_product` | `InventoryService.get_product` | `product:view` |
 
 There's no `order:view` permission yet, so order tools wait until one exists.
+
+`search_products` is the entry point for most questions: employees name products, the other tools take a `product_id` or `stock_id`. It's a case-insensitive substring match on name or SKU (`%` and `_` are taken literally), inactive products included with their `is_active` flag. When several products match, the prompt tells the model to ask which one instead of guessing.
+
+### Locations
+
+Employees can read data from **any** location through the assistant, not only their current one. Location defaults to the current one when the model doesn't pass a `location_id`. In exchange, every quantity has to say where it is: "30 units of X at location Y", never just "30 units of X".
+
+- Every stock row a tool returns carries `product_name`, `sku`, `location_id` and `location_name` (`StockRow` in `inventory_tools.py`), and `list_stock_movements` returns the row it belongs to next to the movements. The model never has to resolve an id to name a product or a location.
+- The system prompt tells the model to name the location of every quantity it mentions.
+- `list_stock_movements` calls `get_stock_history`, which has no branch guard. The REST `GET /inventory/movements` keeps using `list_stock_movements`, which still returns 404 for a stock row of another location: that endpoint stays scoped to the current location.
 
 ### Rules
 
@@ -180,7 +191,9 @@ There's no `order:view` permission yet, so order tools wait until one exists.
 4. If the model answers with text: return it, along with the list of tools that were called.
 5. Stop after a fixed number of iterations (e.g. 5) and return a fallback message, so a confused model can't loop forever.
 
-The system prompt tells the model to use tools for every number it mentions, never to invent quantities, and to say so when the data isn't there.
+The system prompt tells the model to use tools for every number it mentions, never to invent quantities, to name the location of every quantity, and to say so when the data isn't there. It also limits the scope: only questions about products, stock, restocking, movements and locations. Anything else (general knowledge, math, coding, chit-chat) gets a one sentence "outside what I can help with". Greetings and "what can you do?" are still answered.
+
+**Off-topic questions:** only the prompt enforces the scope, there's no classifier in front of the loop. An off-topic question only costs tokens, that cost is already capped by the iteration limit, the per-request budget and the daily quota, and the users are authenticated, logged employees. What the model can read and do is enforced in code (tool permissions, read-only tools), not by the prompt. A classifier would add latency to every request and block some valid questions. If the logs show abuse, reconsider.
 
 **Conversation state:** stateless to start. The client sends the history with each request. Storing conversations server-side can come later if needed.
 
@@ -205,7 +218,7 @@ The same `get_replenishment_suggestions` can enrich the `low_stock_alert` worker
 - **`replenishment.py`:** plain unit tests with hand-picked numbers, no database.
 - **Service method:** integration tests against Postgres, like the rest of the suite.
 - **Agent loop:** the LLM client is mocked to return scripted tool calls, checking that tools run, permissions are enforced, and the loop stops.
-- **Evals:** a small set of known questions ("what should I restock at location A?") run against the real model, checking which tools were called and that the numbers in the answer match the tool output.
+- **Evals:** a small set of known questions ("what should I restock at location A?") run against the real model, checking which tools were called, that the numbers in the answer match the tool output, and that every quantity names its location. Include off-topic questions ("what's the square root of 27?", "write me a poem") to measure how often the scope rule leaks.
 
 ## Status
 

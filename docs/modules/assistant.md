@@ -58,8 +58,9 @@ Details:
 - **No connection held during LLM calls.** The service commits the session after loading permissions and after each round of tools. Everything is read-only, so the commit only ends the transaction and returns the connection to the pool; the next query takes a new one.
 - **Prompt caching.** Two 5-minute breakpoints: one on the system prompt (tools render before it, so it caches both) and the top-level automatic one, which follows the growing conversation. The big saving is inside a request: each iteration reads everything the previous one sent from cache. Across requests only tools + system hit, because the client's text-only history diverges from the tool calls the server saw. Tools come from a fixed list filtered by permissions, so each role gets its own cache entry.
 - **Cost units.** Usage is measured in units of one uncached input token, weighted by Claude Opus 5.5 prices: cache reads 0.05, cache writes 1.25, output 5. Raw token counts would make cached requests look as expensive as uncached ones. The weights live in `usage.py`; update them if `LLM_MODEL` changes.
+- **Finding products.** `search_products` matches part of the name or SKU, case-insensitive, and returns the `product_id` the other tools need. If several match, the model asks which one.
 - **Capped results.** `get_stock_levels` and `get_replenishment_suggestions` take a `limit` (default 50, max 200). `total` still counts every row, so the model can tell the list was cut.
-- **Current location.** Tools default to the location from the `X-Location-Id` header (same as the stock endpoints). The model only passes a `location_id` when the employee asks about another branch.
+- **Current location.** Tools default to the location from the `X-Location-Id` header (same as the stock endpoints). The model only passes a `location_id` when the employee asks about another branch: any branch can be read. Every stock row a tool returns carries `product_name`, `sku` and `location_name`, and the prompt makes the model name the location of every quantity it mentions.
 - **Stateless.** The client sends the whole conversation on every request (max 20 messages, 4000 chars each, starting and ending with a user message). Only plain text is accepted from the client, so it can't forge tool results; tool calls and their results exist only inside one request.
 - **Refusals.** Requests go out with `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`): if the model's safety classifiers decline, the API retries on Anthropic's recommended fallback model. If the whole chain still refuses, the user gets a fixed "can't help" answer.
 - **Read-only.** There are no write tools. When they're added, they'll return a pending action that the employee confirms through a separate endpoint (see the design doc).
@@ -68,9 +69,10 @@ Details:
 
 | Tool | Calls | Permission |
 |---|---|---|
+| `search_products` | `InventoryService.search_products` | `product:view` |
 | `get_replenishment_suggestions` | `InventoryService.get_replenishment_suggestions` | `stock:view` |
 | `get_stock_levels` | `InventoryService.get_stock_levels` | `stock:view` |
-| `list_stock_movements` | `InventoryService.list_stock_movements` | `stock:view` |
+| `list_stock_movements` | `InventoryService.get_stock_history` | `stock:view` |
 | `list_locations` | `InventoryService.get_location_list` | `location:list` |
 | `get_product` | `InventoryService.get_product` | `product:view` |
 

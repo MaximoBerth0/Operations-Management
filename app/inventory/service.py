@@ -2,6 +2,7 @@
 PRODUCT:
   get_product()
   list_products()
+  search_products()
   create_product()
   update_product()
   activate_product()
@@ -19,6 +20,7 @@ STOCK:
   remove_stock()
   adjust_stock()
   list_stock_movements()
+  get_stock_history()
   get_stock_levels()
   get_replenishment_suggestions()
 
@@ -108,6 +110,12 @@ class StockReplenishment:
     suggestion: ReplenishmentSuggestion
 
 
+@dataclass(frozen=True)
+class StockHistory:
+    stock: InventoryStock  # loaded with product and location
+    movements: list[StockMovement]
+
+
 class InventoryService:
     def __init__(
         self,
@@ -138,6 +146,13 @@ class InventoryService:
     async def list_products(self):
         result = await self.product_repo.list_products()
         return result
+
+    async def search_products(self, query: str):
+        # a blank query would match every product
+        query = query.strip()
+        if not query:
+            return []
+        return await self.product_repo.search_products(query)
 
     async def create_product(self, name: str, sku: str, category_id: uuid.UUID):
         if not name or not name.strip():
@@ -468,6 +483,17 @@ class InventoryService:
             raise StockNotFound()
 
         return await self.stock_repo.list_stock_movements(stock_id, limit)
+
+    async def get_stock_history(self, stock_id: uuid.UUID, limit: int = 100) -> StockHistory:
+        """Movements of a stock row in any location, with its product and location.
+        No branch guard: the caller decides whether cross-location reads are allowed."""
+        stock = await self.stock_repo.get_stock_with_details(stock_id)
+        if not stock:
+            logger.warning("get_stock_history: stock not found", extra={"stock_id": stock_id})
+            raise StockNotFound()
+
+        movements = await self.stock_repo.list_stock_movements(stock_id, limit)
+        return StockHistory(stock=stock, movements=movements)
 
     async def get_stock_levels(
         self,

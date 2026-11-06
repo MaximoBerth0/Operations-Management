@@ -2,7 +2,7 @@ import uuid
 
 from app.inventory.models.category import Category
 from app.inventory.models.product import Product
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -22,6 +22,23 @@ class ProductRepository:
 
     async def list_products(self) -> list[Product]:
         stmt = select(Product)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def search_products(self, query: str) -> list[Product]:
+        """Case-insensitive substring match on name or SKU, ordered by name."""
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
+        stmt = (
+            select(Product)
+            .where(
+                or_(
+                    Product.name.ilike(pattern, escape="\\"),
+                    Product.sku.ilike(pattern, escape="\\"),
+                )
+            )
+            .order_by(Product.name, Product.sku)
+        )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 

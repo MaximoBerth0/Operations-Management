@@ -135,9 +135,27 @@ async def test_stock_levels_and_movements(
         "list_stock_movements", {"stock_id": stock["stock_id"]}, ctx, ALL_PERMISSIONS
     )
 
-    assert levels.content["items"][0]["quantity"] == 6
-    assert levels.content["items"][0]["reserved_quantity"] == 0
+    [row] = levels.content["items"]
+    assert row["quantity"] == 6
+    assert row["reserved_quantity"] == 0
+    assert row["product_name"] == "widget"
+    assert row["location_name"] == "warehouse"
+    assert movements.content["stock"]["location_name"] == "warehouse"
     assert [m["movement_type"] for m in movements.content["items"]] == ["out"]
+
+
+async def test_movements_from_another_location(admin_user, make_stock, make_ctx):
+    stock = await make_stock(admin_user, quantity=10, reorder_point=2)
+    # the employee is at some other branch: cross-location reads are allowed
+    ctx = make_ctx(admin_user.id, uuid.uuid4())
+
+    result = await run_tool(
+        "list_stock_movements", {"stock_id": stock["stock_id"]}, ctx, ALL_PERMISSIONS
+    )
+
+    assert not result.is_error
+    assert result.content["stock"]["location_id"] == stock["location_id"]
+    assert result.content["stock"]["location_name"] == "warehouse"
 
 
 # permissions source
@@ -166,3 +184,38 @@ async def test_stock_levels_respects_limit(
 
     assert len(result.content["items"]) == 1
     assert result.content["total"] == 2
+
+
+async def test_search_products_by_name_or_sku(admin_user, make_category, make_product, make_ctx):
+    category_id = await make_category(admin_user)
+    await make_product(admin_user, name="Red Widget", sku="RW-1", category_id=category_id)
+    await make_product(admin_user, name="Blue Gadget", sku="BG-1", category_id=category_id)
+    ctx = make_ctx(admin_user.id, uuid.uuid4())
+
+    by_name = await run_tool("search_products", {"query": "widget"}, ctx, ALL_PERMISSIONS)
+    by_sku = await run_tool("search_products", {"query": "bg-"}, ctx, ALL_PERMISSIONS)
+
+    assert [p["name"] for p in by_name.content["items"]] == ["Red Widget"]
+    assert [p["sku"] for p in by_sku.content["items"]] == ["BG-1"]
+
+
+async def test_search_products_treats_wildcards_literally(
+    admin_user, make_category, make_product, make_ctx
+):
+    await make_product(admin_user, name="widget", sku="SKU-1", category_id=await make_category(admin_user))
+
+    result = await run_tool(
+        "search_products", {"query": "%"}, make_ctx(admin_user.id, uuid.uuid4()), ALL_PERMISSIONS
+    )
+
+    assert result.content == {"items": [], "total": 0}
+
+
+async def test_search_products_blank_query_matches_nothing(admin_user, make_product, make_ctx):
+    await make_product(admin_user)
+
+    result = await run_tool(
+        "search_products", {"query": "   "}, make_ctx(admin_user.id, uuid.uuid4()), ALL_PERMISSIONS
+    )
+
+    assert result.content == {"items": [], "total": 0}
