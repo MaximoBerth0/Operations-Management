@@ -4,7 +4,7 @@
 
 The Management API is a single FastAPI application, organized as a set of **feature modules** ([auth](modules/auth.md), [users](modules/users.md), [rbac](modules/rbac.md), [inventory](modules/inventory.md), [orders](modules/orders.md), [assistant](modules/assistant.md)) over a shared PostgreSQL database, accessed asynchronously via SQLAlchemy + asyncpg. It ships as one container image and runs on AWS ECS Fargate (see [deployment](deployment.md)).
 
-Cross-cutting concerns live outside the feature modules: configuration, security primitives, and the global error contract in `app/core/`; the async engine and session in `app/database/`; request-id, logging, and health probes in `app/observability/`.
+Cross-cutting concerns live outside the feature modules: infrastructure (configuration, secrets, database session, security primitives, Redis, rate limiting, mailer, LLM client) in `app/infra/`; the error contract, exception handlers and permission/role constants in `app/common/`; request-id, logging, Sentry and health probes in `app/observability/`; background jobs in `app/worker/`.
 
 ## Layer division
 
@@ -51,16 +51,23 @@ app/
 │   └── exceptions.py    #   typed domain errors
 ├── assistant/           # LLM agent over the services, read-only tools (see modules/assistant.md)
 │
-├── core/                # cross-cutting foundations
+├── infra/               # cross-cutting infrastructure
 │   ├── config.py        #   Settings (pydantic-settings, layered sources)
 │   ├── secrets.py       #   AWS Secrets Manager settings source
+│   ├── database/        #   async engine, session factory, lifecycle hooks
 │   ├── security/        #   password hashing + JWT tokens
-│   ├── constants/       #   permission/role matrices (seeded at startup)
-│   └── global_errors.py #   AppError base + error contract
+│   ├── redis/           #   Redis client
+│   ├── rate_limit/      #   token bucket, policies, dependencies
+│   ├── mail/            #   SES-backed mailer
+│   └── llm/             #   LLM client (only place importing the Anthropic SDK)
 │
-├── database/            # async engine, session factory, lifecycle hooks
+├── common/              # shared contracts
+│   ├── errors.py        #   AppError base + error contract
+│   ├── handlers.py      #   exception handlers registered in main.py
+│   └── constants/       #   permission/role matrices (seeded by bootstraps)
+│
 ├── observability/       # request-id middleware, logging, Sentry, health probes
-├── mail/                # SES-backed mailer
+├── worker/              # Procrastinate app and tasks (emails, low stock alerts)
 └── bootstraps/          # one-off seeders (permissions, roles)
 
 alembic/                 # database migrations

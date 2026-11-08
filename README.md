@@ -76,8 +76,9 @@ The API runs as a container on **Amazon ECS** (Fargate) behind an Application Lo
 
 The codebase is organized into self-contained feature modules under `app/`, each
 following the same layered layout (**router → service → repository → model**).
-Shared concerns (config, security, constants) live in `core/`, and the SQLAlchemy
-engine and session wiring live in `database/`.
+Infrastructure (config, database session, security, Redis, rate limiting, mail,
+LLM client) lives in `infra/`, and shared errors and permission constants live in
+`common/`.
 
 ---
 

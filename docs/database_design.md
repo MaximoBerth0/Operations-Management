@@ -10,7 +10,7 @@ The domain, at a glance:
 - **inventory** — `products`, `categories` (M:N), `locations`, `inventory_stock` (per location+product), and the append-only `stock_movement` audit log.
 - **orders** — `orders` (state machine) → `order_items` → `stock_reservation`, the last bridging an order line to the inventory stock it holds.
 
-The full engine and session setup lives in [app/database/session.py](../app/database/session.py); tunables are in [app/core/config.py](../app/core/config.py).
+The full engine and session setup lives in [app/infra/database/session.py](../app/infra/database/session.py); tunables are in [app/infra/config.py](../app/infra/config.py).
 
 ## Technical decisions
 
@@ -18,7 +18,7 @@ The full engine and session setup lives in [app/database/session.py](../app/data
 
 **`expire_on_commit=False`.** Committed ORM objects stay usable after the transaction closes, so response serialization doesn't trigger surprise lazy-load queries (which would fail on an async session). Relationships that responses need are eager-loaded (`selectinload`) in the repository instead.
 
-**Configurable connection pooling.** All pool parameters are settings, so the same image tunes to its environment without code changes ([config.py](../app/core/config.py)):
+**Configurable connection pooling.** All pool parameters are settings, so the same image tunes to its environment without code changes ([config.py](../app/infra/config.py)):
 
 | Setting | Default | Purpose |
 |---|---|---|

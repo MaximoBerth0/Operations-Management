@@ -18,7 +18,7 @@ User → has roles → roles have permissions → check passes / fails
 
 - Two association tables with composite PKs and cascading deletes: `user_roles` (User ↔ Role) and `role_permissions` (Role ↔ Permission).
 - Permissions use a `resource:action` code convention (e.g. `users:view`, `stock:in`).
-- **Permission matrices live in code, not the DB.** `seed_all()` runs once at startup ([app/bootstraps/](../../app/bootstraps/)) to create every permission then assign them to the seeded roles `admin`, `employee`, `client` (see [app/core/constants/](../../app/core/constants/)). `client` is intentionally permission-less — its access comes from self-scoped and public routes, not RBAC grants. Changing the matrix means a re-seed.
+- **Permission matrices live in code, not the DB.** `seed_all()` runs once at startup ([app/bootstraps/](../../app/bootstraps/)) to create every permission then assign them to the seeded roles `admin`, `employee`, `client` (see [app/common/constants/](../../app/common/constants/)). `client` is intentionally permission-less — its access comes from self-scoped and public routes, not RBAC grants. Changing the matrix means a re-seed.
 
 ## Flow
 

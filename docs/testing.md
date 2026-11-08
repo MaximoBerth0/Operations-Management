@@ -35,6 +35,8 @@ pytest tests/ -v
 docker compose -f docker/docker-compose-test.yml down
 ```
 
+Without `test-db`, `up -d` also starts `test-redis` on port 6379, which the rate limit tests need (the `redis_enabled` fixture, `TEST_REDIS_URL` to override). The rest of the suite runs without Redis.
+
 Run a subset by path or keyword as usual, e.g. `pytest tests/inventory -v` or `pytest tests/ -k stock`.
 
 `pytest.ini` sets `asyncio_mode = auto` (async tests need no `@pytest.mark.asyncio`) and `pythonpath = .` so `app` and `tests` import cleanly.
@@ -47,7 +49,7 @@ Run a subset by path or keyword as usual, e.g. `pytest tests/inventory -v` or `p
 |---|---|
 | `db_session` | One connection per test. Creates the schema from `Base.metadata`, opens an outer transaction, and **rolls it back after the test** so nothing leaks between tests; drops the schema at the end. |
 | `client` | An `httpx.AsyncClient` bound to the app via `ASGITransport`, with `get_session` overridden to reuse the test's `db_session` (so the request and the test share one transaction). |
-| `seeded` | Inserts every permission and role from the `app/core/constants/` matrices into the test DB — the same seed the app applies at startup. |
+| `seeded` | Inserts every permission and role from the `app/common/constants/` matrices into the test DB — the same seed the app applies at startup. |
 | `admin_user` / `employee_user` / `client_user` / `plain_user` | Users pre-assigned each seeded role (plus a role-less user to distinguish 401 from 403). |
 | `auth_headers` | Builds the `Authorization: Bearer …` header for a user; optionally attaches the `X-Location-Id` header the stock routes require. |
 | `make_category` / `make_product` / `make_location` / `make_stock` / `make_order` / `make_order_item` | Entity builders that create test data through the real API endpoints, so setup exercises the same paths as the assertions. |
@@ -64,8 +66,11 @@ tests/
 ├── auth/                # login, refresh, logout, password reset/change
 ├── user/                # registration, profile, enable/disable
 ├── rbac/                # roles, permissions, user-role assignment
-├── inventory/           # products, categories, locations, stock movements
-└── order/               # order lifecycle + stock reservations
+├── inventory/           # products, categories, locations, stock movements, replenishment, low stock alerts
+├── order/               # order lifecycle + stock reservations
+├── assistant/           # agent loop (fake LLM), tools, router
+├── rate_limit/          # token bucket, policies, login limit (needs Redis)
+└── observability/       # Sentry setup
 ```
 
 Each file targets one module's endpoints end-to-end — happy paths plus the error and permission cases documented in that module's page under [`docs/modules/`](modules/).

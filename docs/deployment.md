@@ -40,7 +40,7 @@ Managed PostgreSQL on RDS, reachable only from the ECS task's security group (pr
 
 ## Secret management
 
-There is **no `.env` in the image**. At startup the app reads a single JSON object from **AWS Secrets Manager** (named by `AWS_SECRETS_NAME`, e.g. `management/prod`) and maps its keys onto its settings — `DATABASE_URL`, `SECRET_KEY`, `SENDER_EMAIL`, `APP_BASE_URL`, `CORS_ALLOW_ORIGINS`, etc. ([secrets.py](../app/core/secrets.py)).
+There is **no `.env` in the image**. At startup the app reads a single JSON object from **AWS Secrets Manager** (named by `AWS_SECRETS_NAME`, e.g. `management/prod`) and maps its keys onto its settings — `DATABASE_URL`, `SECRET_KEY`, `SENDER_EMAIL`, `APP_BASE_URL`, `CORS_ALLOW_ORIGINS`, etc. ([secrets.py](../app/infra/secrets.py)).
 
 Settings precedence (highest first): **explicit env vars → Secrets Manager bundle → local `.env` → file secrets**. So ECS-injected env vars can patch a single value on one task without editing the shared secret. In prod the app loudly refuses to start if the secret is missing or malformed.
 
